@@ -4,6 +4,6 @@ import numpy as np
 import subprocess
 st.title('RMG input User Interface')
 
-rmginput = subprocess.check_output(["python","a.py"])
+rmginput = subprocess.check_output(["python","cif2rmg.py"])
 st.write( rmginput)
 
