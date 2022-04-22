@@ -12,6 +12,8 @@ if cif_file:
     f.write(cif_file.getbuffer())
   filename = "tempDir/"+cif_file.name
 
+  f = open(filename)
+  st.write(f.read())
   rmginput = subprocess.check_output(["python","cif2rmg.py", filename])
   rmginput_str = rmginput.decode()
   #lines = rmginput_str.split("\n")
