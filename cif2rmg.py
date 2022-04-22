@@ -15,7 +15,7 @@ from elementdata import *
 
 #################################################################
 # Open and read CIF file
-cif_file = "cifs/alpha-Mn.cif"
+cif_file = sys.argv[1]
 if cif_file:
     if not os.path.exists(cif_file):
         sys.stderr.write("***Error: The file "+cif_file+" could not be found.\n")

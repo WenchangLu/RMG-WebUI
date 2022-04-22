@@ -2951,51 +2951,23 @@ class RMGFile(GeometryOutputFile):
         # some default input options
         filestring += """
 description = "Short description of the input file"
-#start_mode="FIREBALL Start"
 start_mode="LCAO Start"
-#start_mode="Restart From File"
-
-
 max_scf_steps = "100"
 rms_convergence_criterion = "1e-7"
-
 charge_density_mixing = "0.1"
-projector_mixing = "0.1"
-charge_mixing_type = "Pulay"
-charge_pulay_order = "5"
-charge_pulay_scale = "0.1"
-charge_pulay_refresh = "100"
-
+charge_mixing_type = "Broyden"
 length_units = "Bohr"
 atomic_coordinate_type = "Absolute"
-
-
 occupations_type = "Fermi Dirac"
 occupation_electron_temperature_eV = "0.1"
-occupation_number_mixing = "0.3"
 
 write_eigvals_period = "10"
 input_wave_function_file = "Wave/wave"
 output_wave_function_file = "Wave/wave"
 kohn_sham_solver="davidson"
 calculation_mode="Quench Electrons"
-
-
 """
 
-        k_delta = 0.4
-        kx = int(2.0 * 3.1415926/self.cell.a/k_delta)
-        ky = int(2.0 * 3.1415926/self.cell.b/k_delta)
-        kz = int(2.0 * 3.1415926/self.cell.c/k_delta)
-        if (kx == 0): kx=1
-        if (ky == 0): ky=1
-        if (kz == 0): kz=1
-
-        filestring += """
-# kpoint mesh is determined by kdelta = %f 1/au
-kpoint_mesh = "%d %d %d "
-kpoint_is_shift = "0 0 0 "
-"""%(k_delta, kx, ky, kz)
         ibrav = 0
         self.cell.newunit("bohr")
         t = LatticeMatrix(self.cell.latticevectors)
@@ -3045,19 +3017,14 @@ kpoint_is_shift = "0 0 0 "
             filestring += '"\n'
 
         filestring += 'atoms="\n'
+	atom_format = "%s  %.12e %.12e %.12e"
         for a in self.cell.atomdata:
             for b in a:
                 t = Vector(mvmult3(self.cell.latticevectors,b.position))
                 for i in range(3):
                     t[i] = self.cell.lengthscale*t[i]
-                filestring += b.spcstring().rjust(width)+" "+str(t)
+                filestring += atom_format%(b.spcstring(),t[0], t[1], t[2])
                 filestring += "  1 1 1 0.0 0.0 0.0\n"
         filestring += '"\n'
 
-        filestring += 'pseudo_dir="."\n'
-        filestring += '#pseudopotential ="\n'
-        for sp in self.species:
-            filestring += "#  %2s xxx.UPF\n"%(sp.rjust(width))
-        filestring += '#"\n'
-            
         return filestring
