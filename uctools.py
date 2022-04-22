@@ -1034,6 +1034,7 @@ class CellData(GeometryObject):
 
     # Get lattice information from CIF block
     def getFromCIF(self, cifblock=None):
+        import string
         ################################
         # Get space group information  #
         ################################
@@ -1051,7 +1052,7 @@ class CellData(GeometryObject):
                 pass
         for HMid in ['_symmetry_space_group_name_H-M','_space_group_name_H-M_alt']:
             try:
-                self.HMSymbol=cifblock[HMid].translate(string.maketrans("", ""),string.whitespace)
+                self.HMSymbol=cifblock[HMid].translate(str.maketrans('', '',string.whitespace))
             except:
                 pass
 
@@ -1106,6 +1107,7 @@ class CellData(GeometryObject):
         # Only Hall symbols are used internally.
         if self.HallSymbol == "" or self.HallSymbol == "?" or self.HallSymbol == "." or not self.HallSymbol in Hall2HM:
             if self.HMSymbol == "" or self.HMSymbol == "?" or self.HMSymbol == ".":
+                print("luwa", self.HallSymbol, self.spacegroupnr)
                 if 0 < self.spacegroupnr <= 230:
                     try:
                         self.HallSymbol = Number2Hall[self.spacegroupnr]

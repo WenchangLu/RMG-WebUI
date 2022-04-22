@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import subprocess
+from cif2rmg import *
 st.title('RMG input User Interface')
 cif_file = st.file_uploader("upload cif file", type=".cif")
 if cif_file:
@@ -12,16 +13,18 @@ if cif_file:
     f.write(cif_file.getbuffer())
   filename = "tempDir/"+cif_file.name
 
-  f = open(filename)
-  st.write(f.read())
-  rmginput = subprocess.check_output(["python","cif2rmg.py", filename])
-  rmginput_str = rmginput.decode()
-  #lines = rmginput_str.split("\n")
-  #for line in lines:
-  #  st.write(line)
+  crmg = cifrmg_interface()
+  rmginput_str = crmg.cif2rmg_run(filename)
+
   rmgfilename = cif_file.name.split(".")[0] +".rmg"
   st.download_button(
      label="Downlowd rmg input file",
-     data= rmginput_str,
+     data=rmginput_str,
      file_name = rmgfilename)
-
+  show_rmginput = st.checkbox("show the generated rmg input file", False)
+  if show_rmginput:
+    lines = rmginput_str.split("\n")
+    for line in lines:
+      st.write(line)
+  #st.markdown(rmginput_str)
+  #st.text(rmginput_str)

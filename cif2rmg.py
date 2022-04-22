@@ -2,7 +2,7 @@ import os
 import sys
 import string
 import copy
-from math import *
+import math
 from datetime import datetime
 from optparse import OptionParser, OptionGroup
 import warnings
@@ -13,40 +13,135 @@ from uctools import *
 from ESPInterfaces import *
 from elementdata import *
 
-#################################################################
-# Open and read CIF file
-cif_file = sys.argv[1]
-if cif_file:
-    if not os.path.exists(cif_file):
-        sys.stderr.write("***Error: The file "+cif_file+" could not be found.\n")
-        sys.exit(2)
-    cif_file_name = cif_file.split("/")[-1]
-    cf = CifFile.ReadCif(cif_file)
+class cifrmg_interface():
+    def __init__(self):
+        self.reducetoprim = True
+    def cif2rmg_run(self, cif_file=None): 
+        #################################################################
+        # Open and read CIF file
+        if cif_file:
+            if not os.path.exists(cif_file):
+                sys.stderr.write("***Error: The file "+cif_file+" could not be found.\n")
+                sys.exit(2)
+            cif_file_name = cif_file.split("/")[-1]
+            cf = CifFile.ReadCif(cif_file)
 
-##############################################
-# Get blocks
-cfkeys = list(cf.keys())
-cb = cf.get(cfkeys[0])
-# Get reference data
-ref = ReferenceData()
-ref.getFromCIF(cb)
-# Get cell data
-cd = CellData()
-cd.force = True
-cd.getFromCIF(cb)
+        ##############################################
+        # Get blocks
+        cfkeys = list(cf.keys())
+        cb = cf.get(cfkeys[0])
+        # Get reference data
+        ref = ReferenceData()
+        ref.getFromCIF(cb)
+        # Get cell data
+        cd = CellData()
+        cd.force = True
+        cd.getFromCIF(cb)
 
 
-##############################################
-# Generate cell
-cd.conventional()
+        ##############################################
+        # Generate cell
+        if self.reducetoprim:
+            cd.primitive()
+        else:
+            cd.conventional()
 
-inputcell = copy.copy(cd)
+        inputcell = copy.copy(cd)
 
-############################################################################################
-# Output file mode (overwrite or append?)
-outputfile = "rmg_input"
+        self.cell = cd
 
-################################################################################################
-docstring = ''
-rmginput = RMGFile(cd, docstring)
-print(rmginput) 
+        # set up species list
+        tmp = set([])
+        for a in self.cell.atomdata:
+            for b in a:
+                tmp.add(b.spcstring())
+        self.species = list(tmp)
+
+        filestring = ""
+        # Set current units and stuff
+        # Determine max width of spcstring
+        width = 0
+        for a in self.cell.atomdata:
+            for b in a:
+                width = max(width, len(b.spcstring()))
+        #
+        # some default input options
+        filestring += """
+description = "Short description of the input file"
+start_mode="LCAO Start"
+max_scf_steps = "100"
+rms_convergence_criterion = "1e-7"
+charge_density_mixing = "0.1"
+charge_mixing_type = "Broyden"
+length_units = "Bohr"
+atomic_coordinate_type = "Absolute"
+occupations_type = "Fermi Dirac"
+occupation_electron_temperature_eV = "0.1"
+
+write_eigvals_period = "10"
+input_wave_function_file = "Wave/wave"
+output_wave_function_file = "Wave/wave"
+kohn_sham_solver="davidson"
+calculation_mode="Quench Electrons"
+"""
+
+        ibrav = 0
+        self.cell.newunit("bohr")
+        t = LatticeMatrix(self.cell.latticevectors)
+        for i in range(3):
+            for j in range(3):
+                t[i][j] = self.cell.latticevectors[i][j]*self.cell.lengthscale
+        ortho = abs(self.cell.a - t[0][0]) < 1.0e-5 
+        ortho = ortho and abs(self.cell.b - t[1][1]) < 1.0e-5
+        ortho = ortho and abs(self.cell.c - t[2][2]) < 1.0e-5
+
+        if ortho: ibrav = 8
+        system = self.cell.crystal_system()
+        setting = self.cell.spacegroupsetting
+        if system == 'cubic':
+            if self.cell.primcell:
+                if setting == 'P':
+                    ibrav = 1
+                elif setting == 'F':
+                    ibrav = 2
+                elif setting == 'I':
+                    ibrav = 3
+            else:
+                ibrav = 1
+        if system == 'hexagonal':
+            if self.cell.primcell:
+                if setting == 'P':
+                    ibrav = 4
+            #elif setting == 'R':
+            #    return 5
+
+        brav_type = {
+            0:"None",
+            1:"Cubic Primitive",
+            2:"Cubic Face Centered",
+            3:"Cubic Body Centered",
+            4:"Hexagonal Primitive",
+            8:"Orthorhombic Primitive"
+        }
+        filestring += 'bravais_lattice_type="%s"\n'%brav_type[ibrav]
+        if ibrav !=0:
+            filestring += 'a_length="%16.8f"\n'%self.cell.a
+            filestring += 'b_length="%16.8f"\n'%self.cell.b
+            filestring += 'c_length="%16.8f"\n'%self.cell.c
+        else:
+            filestring += 'lattice_vector="\n'
+            filestring += str(t)
+            filestring += '"\n'
+
+        filestring += 'atoms="\n'
+        atom_format = "%s  %.12e %.12e %.12e"
+        for a in self.cell.atomdata:
+            for b in a:
+                t = Vector(mvmult3(self.cell.latticevectors,b.position))
+                for i in range(3):
+                    t[i] = self.cell.lengthscale*t[i]
+                filestring += atom_format%(b.spcstring(),t[0], t[1], t[2])
+                filestring += "  1 1 1 0.0 0.0 0.0\n"
+        filestring += '"\n'
+
+        return filestring
