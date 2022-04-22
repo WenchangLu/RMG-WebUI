@@ -48,4 +48,4 @@ outputfile = "rmg_input"
 ################################################################################################
 docstring = ''
 rmginput = RMGFile(cd, docstring)
-print rmginput
+print(rmginput)
