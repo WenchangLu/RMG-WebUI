@@ -32,17 +32,7 @@ ref = ReferenceData()
 ref.getFromCIF(cb)
 # Get cell data
 cd = CellData()
-try:
-    cd.getFromCIF(cb)
-except PositionError, e:
-    sys.stderr.write("***Error: cell setup: "+e.value+"\n")
-    sys.exit(2)
-except CellError, e:
-    sys.stderr.write("***Error: cell setup: "+e.value+"\n")
-    sys.exit(2)
-except SymmetryError, e:
-    sys.stderr.write("***Error: cell setup: "+e.value+"\n")
-    sys.exit(2)
+cd.getFromCIF(cb)
 
 
 ##############################################
