@@ -1,5 +1,5 @@
 """
-1.This Software copyright \u00A9 Australian Synchrotron Research Program Inc, ("ASRP").
+1.This Software copyright \\u00A9 Australian Synchrotron Research Program Inc, ("ASRP").
 
 2.Subject to ensuring that this copyright notice and licence terms
 appear on all copies and all modified versions, of PyCIFRW computer
@@ -37,6 +37,7 @@ from types import *
 import re
 import StarFile
 import sys
+from functools import reduce
 class CifLoopBlock(StarFile.LoopBlock):
     def __init__(self,data=(),dimension=0,**kwargs):
         self.loopclass = CifLoopBlock
@@ -81,9 +82,9 @@ class CifBlock(CifLoopBlock):
                # send the dictionary the required key and a pointer to us
                rawitem = self.dictionary.derive_item(key,self)
            else:
-               raise KeyError, 'No such item: %s' % key
+               raise KeyError('No such item: %s' % key)
         # we now have an item, we can try to convert it to a number if that is appropriate
-        if not self.dictionary or not self.dictionary.has_key(key): return rawitem
+        if not self.dictionary or key not in self.dictionary: return rawitem
         return self.dictionary.change_type(key,rawitem)
 
     def __setitem__(self,key,value):
@@ -99,7 +100,7 @@ class CifBlock(CifLoopBlock):
     def copy(self):
         newblock = CifLoopBlock.copy(self)
         newblock.saves = self.saves.copy()
-        return self.copy.im_class(newblock)   #catch inheritance
+        return self.copy.__self__.__class__(newblock)   #catch inheritance
 
     def has_key(self,key):
         if key == "saves": return 1
@@ -107,7 +108,7 @@ class CifBlock(CifLoopBlock):
 
     def __str__(self):
         retstr = ''
-        for sb in self.saves.keys():
+        for sb in list(self.saves.keys()):
             retstr = retstr + '\nsave_%s\n\n' % sb
             self.saves[sb].SetOutputLength(self.wraplength,self.maxoutlength)
             retstr = retstr + str(self.saves[sb])
@@ -121,19 +122,19 @@ class CifBlock(CifLoopBlock):
         loopdone = []
         if not isinstance(adict,CifBlock):
             raise TypeError
-        for key in adict.block.keys():
+        for key in list(adict.block.keys()):
             self.AddCifItem((key,adict[key]))
         for aloop in adict.loops:
             self.insert_loop(aloop,audit=True)
 
     def AddCifItem(self,data):
         # we accept only tuples, strings and lists!!
-        if not (isinstance(data[0],(StringType,TupleType,ListType))):
-                  raise TypeError, 'Cif datanames are either a string, tuple or list'
+        if not (isinstance(data[0],(str,tuple,list))):
+                  raise TypeError('Cif datanames are either a string, tuple or list')
         # single items passed straight through to underlying routine
         # we catch single item loops as well...
-        if isinstance(data[0],StringType):
-            if isinstance(data[1],(TupleType,ListType)) and not isinstance(data[1],(StarFile.StarList,StarFile.StarTuple)):
+        if isinstance(data[0],str):
+            if isinstance(data[1],(tuple,list)) and not isinstance(data[1],(StarFile.StarList,StarFile.StarTuple)):
                 CifLoopBlock.AddLoopItem(self,((data[0],),((data[1],))))
             else:
                 CifLoopBlock.AddLoopItem(self,data)
@@ -141,22 +142,22 @@ class CifBlock(CifLoopBlock):
         # otherwise, we unpack one level and send along.  This is different
         # to the StarBlock behaviour, which assumes that any tuples imply an
         # inner loop.
-        keyvals = zip(data[0],data[1])
-        map(lambda a:CifLoopBlock.AddLoopItem(self,a),keyvals)
+        keyvals = list(zip(data[0],data[1]))
+        list(map(lambda a:CifLoopBlock.AddLoopItem(self,a),keyvals))
 
     def checklengths(self):
-        toolong = filter(lambda a:len(a)>75, self.keys())
+        toolong = [a for a in list(self.keys()) if len(a)>75]
         outstring = ""
         for it in toolong: outstring += "\n" + it
         if toolong:
            raise CifError( 'Following data names too long:' + outstring)
 
     def loopnames(self):
-        return map(lambda a:a.keys(),self.loops)
+        return [list(a.keys()) for a in self.loops]
 
     def assign_dictionary(self,dic):
         if not dic.diclang=="DDLm":
-            print "Warning: ignoring dictionary %s" % dic.dic_as_cif.my_uri
+            print("Warning: ignoring dictionary %s" % dic.dic_as_cif.my_uri)
             return
         self.dictionary = dic
 
@@ -168,37 +169,37 @@ class CifBlock(CifLoopBlock):
                                                         match_function=match_function)
         if mode == 'strict':
            for key in new_block.item_order: 
-               if self.has_key(key) and key not in match_att:
+               if key in self and key not in match_att:
                   raise CifError( "Identical keys %s in strict merge mode" % key)
                elif key not in match_att:           #no change otherwise
-                  if isinstance(key,StringType):
+                  if isinstance(key,str):
                       self[key] = new_block[key] 
                   else:
                       self.insert_loop(key)
         elif mode == 'replace':
-           newkeys = new_block.keys()
+           newkeys = list(new_block.keys())
            for ma in match_att:
               try:
                    newkeys.remove(ma)        #don't touch the special ones
               except ValueError:
                    pass
            for key in new_block.item_order: 
-                  if isinstance(key,StringType):
+                  if isinstance(key,str):
                       self[key] = new_block[key] 
                   else:
                       self.insert_loop(key)   #assume is a loop
         elif mode == 'overlay': 
-           for attribute in new_block.keys():
+           for attribute in list(new_block.keys()):
                if attribute in match_att: continue      #ignore this one
                new_value = new_block[attribute]
                #non-looped items
-               if isinstance(new_value,StringType):
+               if isinstance(new_value,str):
                   self[attribute] = new_value 
-           these_atts = self.keys()
+           these_atts = list(self.keys())
            for newloop in new_block.loops:              
-               newkeys = newloop.keys()
+               newkeys = list(newloop.keys())
                # note that the following line determines packet item order
-               overlaps = filter(lambda a: a in these_atts,newkeys)
+               overlaps = [a for a in newkeys if a in these_atts]
                if len(overlaps)< len(newloop):#completely new loop
                   self.insert_loop(newloop)
                elif len(overlaps)==len(newloop):
@@ -206,25 +207,25 @@ class CifBlock(CifLoopBlock):
                   # print "In overlay merge mode, found extra packet items:"
                   # print `overlaps`
                   # get key position
-                  loop_keys = filter(lambda a:a in rel_keys,overlaps)
+                  loop_keys = [a for a in overlaps if a in rel_keys]
                   try:
-                     newkeypos = map(lambda a:newkeys.index(a),loop_keys)
+                     newkeypos = [newkeys.index(a) for a in loop_keys]
                      newkeypos = newkeypos[0]      #one key per loop for now
                      loop_keys = loop_keys[0] 
                   except (ValueError,IndexError):
                      newkeypos = []
-                  overlap_data = map(lambda a:listify(self[a]),overlaps) #old packet data
-                  new_data = map(lambda a:new_block[a],overlaps) #new packet data
+                  overlap_data = [listify(self[a]) for a in overlaps] #old packet data
+                  new_data = [new_block[a] for a in overlaps] #new packet data
                   packet_data = transpose(overlap_data)
                   new_p_data = transpose(new_data)
                   # remove any packets for which the keys match between old and new; we
                   # make the arbitrary choice that the old data stays
                   if newkeypos:
                       # get matching values in new list
-                      print "Old, new data:\n%s\n%s" % (`overlap_data[newkeypos]`,`new_data[newkeypos]`)
-                      key_matches = filter(lambda a:a in overlap_data[newkeypos],new_data[newkeypos])
+                      print("Old, new data:\n%s\n%s" % (repr(overlap_data[newkeypos]),repr(new_data[newkeypos])))
+                      key_matches = [a for a in new_data[newkeypos] if a in overlap_data[newkeypos]]
                       # filter out any new data with these key values
-                      new_p_data = filter(lambda a:a[newkeypos] not in key_matches,new_p_data)
+                      new_p_data = [a for a in new_p_data if a[newkeypos] not in key_matches]
                       if new_p_data:
                           new_data = transpose(new_p_data)
                       else: new_data = []
@@ -265,7 +266,7 @@ class CifFile(StarFile.StarFile):
 """
     def NewBlock(self,blockname,*nkwargs,**kwargs):
        if len(blockname)>75:
-           raise CifError , 'Blockname %s is longer than 75 characters' % blockname
+           raise CifError('Blockname %s is longer than 75 characters' % blockname)
        else:
            StarFile.StarFile.NewBlock(self,blockname,*nkwargs,**kwargs)
 
@@ -289,7 +290,7 @@ class CifDic(StarFile.BlockCollection):
         self.template_cache = {}    #for DDLm imports
         self.ddlm_functions = {}    #for DDLm functions
         self.switch_numpy(False)    #no Numpy arrays returned 
-        if isinstance(dic,StringType):
+        if isinstance(dic,str):
             self.dic_as_cif = CifFile(dic,grammar=grammar)
         (self.dicname,self.diclang,self.defdata) = self.dic_determine(self.dic_as_cif)
         StarFile.BlockCollection.__init__(self,element_class=CifBlock,datasource=self.defdata) 
@@ -305,7 +306,7 @@ class CifDic(StarFile.BlockCollection):
             self.ddlm_normalise()
             self.ddlm_import()      #recursively calls this routine
             if not self.do_minimum:
-                print "Doing full dictionary initialisation" 
+                print("Doing full dictionary initialisation") 
                 self.ddlm_parse_valid() #extract validity information from data block
                 self.transform_drel()   #parse the drel functions
                 self.add_drel_funcs()   #put the drel functions into the namespace
@@ -344,7 +345,7 @@ class CifDic(StarFile.BlockCollection):
         # j.close()
 
     def dic_determine(self,cifdic):
-        if cifdic.has_key("on_this_dictionary"): 
+        if "on_this_dictionary" in cifdic: 
             self.master_key = "on_this_dictionary"
             self.type_spec = "_type"
             self.enum_spec = "_enumeration"
@@ -364,13 +365,13 @@ class CifDic(StarFile.BlockCollection):
             name = cifdic["on_this_dictionary"]["_dictionary_name"]
             version = cifdic["on_this_dictionary"]["_dictionary_version"]
             return (name+version,"DDL1",cifdic)
-        elif len(cifdic.keys()) == 1:              # DDL2/DDLm
-            self.master_key = cifdic.keys()[0]      
+        elif len(list(cifdic.keys())) == 1:              # DDL2/DDLm
+            self.master_key = list(cifdic.keys())[0]      
             name = cifdic[self.master_key]["_dictionary.title"]
             version = cifdic[self.master_key]["_dictionary.version"]
             if name != self.master_key:
-                print "Warning: DDL2 blockname %s not equal to dictionary name %s" % (self.master_key,name)
-            if cifdic[self.master_key].has_key("_dictionary.class"):   #DDLm
+                print("Warning: DDL2 blockname %s not equal to dictionary name %s" % (self.master_key,name))
+            if "_dictionary.class" in cifdic[self.master_key]:   #DDLm
                 self.unique_spec = "_category_key.generic"
                 return(name+version,"DDLm",cifdic[self.master_key]["saves"]) 
             #otherwise DDL2
@@ -391,7 +392,7 @@ class CifDic(StarFile.BlockCollection):
             self.dep_spec = "_item_dependent.dependent_name"
             return (name+version,"DDL2",cifdic[self.master_key]["saves"])
         else:
-            raise CifError, "Unable to determine dictionary DDL version"
+            raise CifError("Unable to determine dictionary DDL version")
         
     def DDL1_normalise(self):
         # add default type information in DDL2 style
@@ -401,10 +402,10 @@ class CifDic(StarFile.BlockCollection):
         base_constructs = [".*",
             '(-?(([0-9]*[.][0-9]+)|([0-9]+)[.]?)([(][0-9]+[)])?([eEdD][+-]?[0-9]+)?)|\?|\.',
             "\"\" "]
-        for key,value in self.dictionary.items():
-           if value.has_key("_name"):
+        for key,value in list(self.dictionary.items()):
+           if "_name" in value:
                real_name = value["_name"]
-               if type(real_name) is ListType:        #looped values
+               if type(real_name) is list:        #looped values
                    for looped_name in real_name:
                        new_value = value.copy()
                        new_value["_name"] = looped_name  #only looped name
@@ -413,12 +414,12 @@ class CifDic(StarFile.BlockCollection):
            # delete the old one
            del self.dictionary[key]
         # loop again to normalise the contents of each definition
-        for key,value in self.dictionary.items():
+        for key,value in list(self.dictionary.items()):
            # deal with a missing _list, _type_conditions
-           if not value.has_key("_list"): value["_list"] = 'no'
-           if not value.has_key("_type_conditions"): value["_type_conditions"] = 'none'
+           if "_list" not in value: value["_list"] = 'no'
+           if "_type_conditions" not in value: value["_type_conditions"] = 'none'
            # deal with enumeration ranges
-           if value.has_key("_enumeration_range"):
+           if "_enumeration_range" in value:
                max,min = self.getmaxmin(value["_enumeration_range"])
                if min == ".":
                    self.dictionary[key].AddLoopItem((("_item_range.maximum","_item_range.minimum"),((max,max),(max,min))))
@@ -427,7 +428,7 @@ class CifDic(StarFile.BlockCollection):
                else:
                    self.dictionary[key].AddLoopItem((("_item_range.maximum","_item_range.minimum"),((max,max,min),(max,min,min))))
            #add any type construct information
-           if value.has_key("_type_construct"):
+           if "_type_construct" in value:
                base_types.append(value["_name"]+"_type")   #ie dataname_type
                base_constructs.append(value["_type_construct"]+"$")
                prim_types.append(value["_type"])     #keep a record
@@ -443,8 +444,8 @@ class CifDic(StarFile.BlockCollection):
                 if catid not in self.cat_list: self.cat_list.append(catid) 
         # we now add any missing categories before filling in the rest of the
         # information
-        for key,value in self.dictionary.items():
-            if self[key].has_key("_category"):
+        for key,value in list(self.dictionary.items()):
+            if "_category" in self[key]:
                 if self[key]["_category"] not in self.cat_list:
                     # rogue category, add it in
                     newcat = self[key]["_category"]
@@ -463,9 +464,9 @@ class CifDic(StarFile.BlockCollection):
             ))
      
     def DDL2_normalise(self):
-       listed_defs = filter(lambda a:isinstance(self[a].get('_item.name'),ListType),self.keys()) 
+       listed_defs = [a for a in list(self.keys()) if isinstance(self[a].get('_item.name'),list)] 
        # now filter out all the single element lists!
-       dodgy_defs = filter(lambda a:len(self[a]['_item.name']) > 1, listed_defs)
+       dodgy_defs = [a for a in listed_defs if len(self[a]['_item.name']) > 1]
        for item_def in dodgy_defs:
           # print "DDL2 norm: processing %s" % item_def
           thisdef = self[item_def]
@@ -480,7 +481,7 @@ class CifDic(StarFile.BlockCollection):
               child_name = thisdef['_item.name'][child_no]
               child_cat = thisdef['_item.category_id'][child_no]
               child_mand = thisdef['_item.mandatory_code'][child_no]
-              if not self.has_key(child_name):
+              if child_name not in self:
                   self[child_name] = CifBlock()
                   self[child_name]['_item.name'] = child_name
               self[child_name]['_item.category_id'] = child_cat
@@ -489,15 +490,15 @@ class CifDic(StarFile.BlockCollection):
           self[item_def]['_item.category_id'] = realcat
           self[item_def]['_item.mandatory_code'] = realmand
        # go through any _item_linked tables
-       dodgy_defs = filter(lambda a:isinstance(self[a].get('_item_linked.child_name'),ListType),self.keys()) 
-       dodgy_defs = filter(lambda a:len(self[a]['_item_linked.child_name']) > 1, dodgy_defs)
+       dodgy_defs = [a for a in list(self.keys()) if isinstance(self[a].get('_item_linked.child_name'),list)] 
+       dodgy_defs = [a for a in dodgy_defs if len(self[a]['_item_linked.child_name']) > 1]
        for item_def in dodgy_defs:
           thisdef = self[item_def]
           child_list = thisdef.get('_item_linked.child_name',[])
           parents = thisdef.get('_item_linked.parent_name',[])
           # zap the parents, they will confuse us!!
           del thisdef['_item_linked.parent_name']
-          if isinstance(child_list,StringType):
+          if isinstance(child_list,str):
               self[child_list]['_item_linked.parent_name'] = parents
               self[parents]['_item_linked.child_name'] = child_list 
           else:
@@ -506,7 +507,7 @@ class CifDic(StarFile.BlockCollection):
               notmychildren = family
               while len(notmychildren):
                   # get all children of first entry
-                  mychildren = filter(lambda a:a[0]==notmychildren[0][0],family)
+                  mychildren = [a for a in family if a[0]==notmychildren[0][0]]
                   # print "Parent %s: %d children" % (notmychildren[0][0],len(mychildren))
                   for parent,child in mychildren:   #parent is the same for all
                       self[child]['_item_linked.parent_name'] = parent
@@ -514,17 +515,17 @@ class CifDic(StarFile.BlockCollection):
                   try:
                       del self[mychildren[0][0]]['_item_linked.child_name']
                   except ValueError: pass
-                  self[mychildren[0][0]]['_item_linked.child_name'] = map(lambda a:a[1],mychildren)
+                  self[mychildren[0][0]]['_item_linked.child_name'] = [a[1] for a in mychildren]
                   # now make a new,smaller list
-                  notmychildren = filter(lambda a:a[0]!=mychildren[0][0],notmychildren)
+                  notmychildren = [a for a in notmychildren if a[0]!=mychildren[0][0]]
        # now flatten any single element lists
-       single_defs = filter(lambda a:len(self[a]['_item.name'])==1,listed_defs)
+       single_defs = [a for a in listed_defs if len(self[a]['_item.name'])==1]
        for flat_def in single_defs:
-           flat_keys = self[flat_def].GetLoop('_item.name').keys()
+           flat_keys = list(self[flat_def].GetLoop('_item.name').keys())
            for flat_key in flat_keys: self[flat_def][flat_key] = self[flat_def][flat_key][0]
        # now deal with the multiple lists
        # next we do aliases
-       all_aliases = filter(lambda a:self[a].has_key('_item_aliases.alias_name'),self.keys()) 
+       all_aliases = [a for a in list(self.keys()) if '_item_aliases.alias_name' in self[a]] 
        for aliased in all_aliases:
           my_aliases = listify(self[aliased]['_item_aliases.alias_name'])
           for alias in my_aliases:
@@ -532,15 +533,15 @@ class CifDic(StarFile.BlockCollection):
               del self[alias]["_item_aliases.alias_name"]
  
     def ddlm_normalise(self):
-        for key,value in self.dictionary.items():
-           if value.has_key("_name.category_id"):
+        for key,value in list(self.dictionary.items()):
+           if "_name.category_id" in value:
                real_name = "_" + value["_name.category_id"] + "." + value["_name.object_id"]
                self[real_name] = value
                # delete the old one
                del self[key]
         
     def ddlm_parse_valid(self):
-        if not self.dic_as_cif[self.master_key].has_key("_dictionary_valid.scope"):
+        if "_dictionary_valid.scope" not in self.dic_as_cif[self.master_key]:
             return
         for scope_pack in self.dic_as_cif[self.master_key].GetLoop("_dictionary_valid.scope"):
             scope = getattr(scope_pack,"_dictionary_valid.scope")
@@ -553,7 +554,7 @@ class CifDic(StarFile.BlockCollection):
                    self.scopes_naughty[scope.lower()].append(valid_info[i+1].lower())
 
     def ddlm_import(self):
-        import urllib
+        import urllib.request, urllib.parse, urllib.error
         #first check the outermost datablocks.  Note we expect our dREL
         #machinery to create _import_list.id only if the individual values are available
         #For this to happen, we need the ddl.dic to have been assigned
@@ -570,11 +571,11 @@ class CifDic(StarFile.BlockCollection):
             for scope,dict_block,file_loc,on_dupl,on_miss in to_be_imported: 
                 scope = scope.lower()                         #work around capitalisation in draft dics
                 if scope == 'att' or scope == 'sta' or scope == 'val':
-                    print 'Improper import directive at top level in %s: ignored' % self.master.key
+                    print('Improper import directive at top level in %s: ignored' % self.master.key)
                     continue 
                 # resolve URI  
                 full_uri = self.resolve_path(file_loc)
-                dic_as_cif = CifFile(urllib.urlopen(full_uri),grammar="DDLm")
+                dic_as_cif = CifFile(urllib.request.urlopen(full_uri),grammar="DDLm")
                 import_from = CifDic(dic_as_cif,do_minimum=True)  #this will recurse internal imports
                 # and now merge these definitions
                 if scope == "dic":
@@ -588,7 +589,7 @@ class CifDic(StarFile.BlockCollection):
             # it will never happen again...
             del self.dic_as_cif[self.master_key]["_import_list.id"]
         # next we resolve per-definition imports
-        for one_def in self.keys():
+        for one_def in list(self.keys()):
             try: 
                 to_be_imported = self[one_def]["_import_list.id"]
             except KeyError:
@@ -606,13 +607,13 @@ class CifDic(StarFile.BlockCollection):
                 for scope,block,file_loc,on_dupl,on_miss in to_be_imported: 
                     scope = scope.lower()                         #work around capitalisation in draft dics
                     if scope == 'dic' or scope == 'cat' or scope == 'grp' or scope == "itm":
-                        print 'Improper import directive at definition level in %s: ignored' % self.master.key
+                        print('Improper import directive at definition level in %s: ignored' % self.master.key)
                         continue 
                     full_uri = self.resolve_path(file_loc)
                     if full_uri not in self.template_cache:
-                        dic_as_cif = CifFile(urllib.urlopen(full_uri),grammar="DDLm")
+                        dic_as_cif = CifFile(urllib.request.urlopen(full_uri),grammar="DDLm")
                         self.template_cache[full_uri] = CifDic(dic_as_cif,do_minimum=True)  #this will recurse internal imports
-                        print 'Added %s to cached dictionaries' % full_uri
+                        print('Added %s to cached dictionaries' % full_uri)
                     import_from = self.template_cache[full_uri]
                     if scope == 'att': 
                         self.import_attributes(one_def,import_from,block,on_dupl,on_miss) 
@@ -621,42 +622,41 @@ class CifDic(StarFile.BlockCollection):
                     elif scope == 'val': 
                         self.import_loop(one_def,import_from,block,'_enumeration_default.value',on_miss)
                     else:
-                        raise CifError, "Unrecognised import scope %s" % scope
+                        raise CifError("Unrecognised import scope %s" % scope)
                 # remove the import attribute 
                 del self[one_def]["_import_list.id"]   
                     
     def resolve_path(self,file_loc):
-        import urlparse
-        url_comps = urlparse.urlparse(file_loc)
+        import urllib.parse
+        url_comps = urllib.parse.urlparse(file_loc)
         if url_comps[0]: return file_loc    #already full URI
-        new_url = urlparse.urljoin(self.dic_as_cif.my_uri,file_loc)
-        print "Transformed %s to %s for import " % (file_loc,new_url)
+        new_url = urllib.parse.urljoin(self.dic_as_cif.my_uri,file_loc)
+        print("Transformed %s to %s for import " % (file_loc,new_url))
         return new_url
         
     def get_whole_dict(self,source_dict,on_dupl,on_miss):
-        print "Cat_map: `%s`" % source_dict.cat_map.values()
-        for source_cat in source_dict.cat_map.values():
+        print("Cat_map: `%s`" % list(source_dict.cat_map.values()))
+        for source_cat in list(source_dict.cat_map.values()):
             self.get_one_cat(source_dict,source_cat,on_dupl,on_miss)
        
     def get_one_cat(self,source_dict,source_cat,on_dupl,on_miss):
         ext_cat = source_dict.get(source_cat,"")
         this_cat = self.get(source_cat,"")
-        print "Adding category %s" % source_cat
+        print("Adding category %s" % source_cat)
         if not ext_cat:
             if on_miss == "Ignore":
                pass
             else:
-               raise CifError, "Missing category %s" % source_cat 
+               raise CifError("Missing category %s" % source_cat) 
         else:
-            all_ext_defns = source_dict.keys()
-            cat_list = filter(lambda a:source_dict[a].get("_name.category_id","").lower()==source_cat.lower(),
-                               all_ext_defns) 
-            print "Items: %s" % `cat_list`
+            all_ext_defns = list(source_dict.keys())
+            cat_list = [a for a in all_ext_defns if source_dict[a].get("_name.category_id","").lower()==source_cat.lower()] 
+            print("Items: %s" % repr(cat_list))
             if this_cat:     # The category block itself is duplicated
                 if on_dupl=="Ignore":
                     pass
                 elif on_dupl == "Exit":
-                    raise CifError, "Duplicate category %s" % source_cat
+                    raise CifError("Duplicate category %s" % source_cat)
                 else: 
                     self[source_cat] = ext_cat
             else:
@@ -666,43 +666,43 @@ class CifDic(StarFile.BlockCollection):
                 self.add_one_defn(source_dict,cat_defn,on_dupl)
 
     def add_one_defn(self,source_dict,cat_defn,on_dupl):
-        if self.has_key(cat_defn):
+        if cat_defn in self:
            if on_dupl == "Ignore": pass
            elif on_dupl == "Exit": 
-                   raise CifError, "Duplicate definition %s" % cat_defn
+                   raise CifError("Duplicate definition %s" % cat_defn)
            else: self[cat_defn] = source_dict[cat_defn]
         else: self[cat_defn] = source_dict[cat_defn]
-        print "    "+cat_defn
+        print("    "+cat_defn)
         
     def get_one_cat_with_children(self,source_dict,source_cat,on_dupl,on_miss):
         self.get_one_cat(source_dict,source_cat,on_dupl,on_miss)
-        child_cats = filter(lambda a:source_dict[a]["_category.parent_id"]==source_dict[source_cat]["_definition.id"],source_dict.cat_map.values())
+        child_cats = [a for a in list(source_dict.cat_map.values()) if source_dict[a]["_category.parent_id"]==source_dict[source_cat]["_definition.id"]]
         for child_cat in child_cats: self.get_one_cat(source_dict,child_cat,on_dupl,on_miss) 
 
     def import_attributes(self,mykey,source_dict,source_def,on_dupl,on_miss):
         # process missing 
-        if not source_dict.has_key(source_def): 
+        if source_def not in source_dict: 
             if on_miss == 'Exit':
-                raise CifError, 'Missing definition for import %s' % source_def
+                raise CifError('Missing definition for import %s' % source_def)
             else: return          #nothing else to do
         # now do the import
-        print 'Adding attributes from %s to %s' % (source_def,mykey)
+        print('Adding attributes from %s to %s' % (source_def,mykey))
         self[mykey].merge(source_dict[source_def],mode='replace',match_att= \
               ['_definition.id','_name.category_id','_name.object_id'])
 
     def import_loop(self,mykey,source_dict,source_def,loop_name,on_miss):
         # process imssing
-        if not source_dict.has_key(source_def): 
+        if source_def not in source_dict: 
             if on_miss == 'Exit':
-                raise CifError, 'Missing definition for import %s' % source_def
+                raise CifError('Missing definition for import %s' % source_def)
             else: return          #nothing else to do
-        print 'Adding %s attributes from %s to %s' % (loop_name,source_def,mykey)
+        print('Adding %s attributes from %s to %s' % (loop_name,source_def,mykey))
         state_loop = source_dict[source_def].GetLoop(loop_name)
         self[mykey].insert_loop(state_loop) 
        
 
     def ddl1_cat_load(self):
-        deflist = self.keys()       #slight optimization
+        deflist = list(self.keys())       #slight optimization
         cat_mand_dic = {}
         cat_unique_dic = {}
         # a function to extract any necessary information from each definition
@@ -725,11 +725,11 @@ class CifDic(StarFile.BlockCollection):
                 if new_unique not in uis: uis.append(new_unique)
                 cat_unique_dic[thiscat] = uis
             
-        map(get_cat_info,deflist)       # apply the above function
-        for cat in cat_mand_dic.keys():
+        list(map(get_cat_info,deflist))       # apply the above function
+        for cat in list(cat_mand_dic.keys()):
             cat_entry = self.get_ddl1_entry(cat)
             self[cat_entry]["_category_mandatory.name"] = cat_mand_dic[cat]
-        for cat in cat_unique_dic.keys():
+        for cat in list(cat_unique_dic.keys()):
             cat_entry = self.get_ddl1_entry(cat)
             self[cat_entry]["_category_key.name"] = cat_unique_dic[cat]
 
@@ -739,17 +739,17 @@ class CifDic(StarFile.BlockCollection):
 
     def get_ddl1_entry(self,cat_name):
         chop_len = len(cat_name) 
-        possibles = filter(lambda a:a[1:chop_len+3]==cat_name+"_[",self.keys())
+        possibles = [a for a in list(self.keys()) if a[1:chop_len+3]==cat_name+"_["]
         if len(possibles) > 1 or possibles == []:
-            raise ValidCifError, "Category name %s can't be matched to category entry" % cat_name
+            raise ValidCifError("Category name %s can't be matched to category entry" % cat_name)
         else:
             return possibles[0]
 
     def add_type_info(self):
-        if self.dic_as_cif[self.master_key].has_key("_item_type_list.construct"): 
+        if "_item_type_list.construct" in self.dic_as_cif[self.master_key]: 
             types = self.dic_as_cif[self.master_key]["_item_type_list.code"]
             prim_types = self.dic_as_cif[self.master_key]["_item_type_list.primitive_code"]
-            constructs = map(lambda a: a + "$", self.dic_as_cif[self.master_key]["_item_type_list.construct"])
+            constructs = [a + "$" for a in self.dic_as_cif[self.master_key]["_item_type_list.construct"]]
             # add in \r wherever we see \n, and change \{ to \\{
             def regex_fiddle(mm_regex):
                 brack_match = r"((.*\[.+)(\\{)(.*\].*))" 
@@ -765,7 +765,7 @@ class CifDic(StarFile.BlockCollection):
                     fixed_regexp = rm.expand(r"\2\3\\r\4")    
                 #print "Regexp %s becomes %s" % (mm_regex,fixed_regexp)
                 return fixed_regexp
-            constructs = map(regex_fiddle,constructs)
+            constructs = list(map(regex_fiddle,constructs))
             packed_up = map(None,types,constructs)
             for typecode,construct in packed_up:
                 self.typedic[typecode] = re.compile(construct,re.MULTILINE|re.DOTALL)
@@ -776,14 +776,14 @@ class CifDic(StarFile.BlockCollection):
 
     def add_category_info(self):
         if self.diclang == "DDLm":
-            categories = filter(lambda a:self[a].get("_definition.scope","Item")=="Category",self.keys())
-            category_ids = map(lambda a:self[a]["_definition.id"],categories)
+            categories = [a for a in list(self.keys()) if self[a].get("_definition.scope","Item")=="Category"]
+            category_ids = [self[a]["_definition.id"] for a in categories]
 
 
         else:
-            categories = filter(lambda a:self[a].has_key("_category.id"),self.keys())
+            categories = [a for a in list(self.keys()) if "_category.id" in self[a]]
             # get the category id
-            category_ids = map(lambda a:self[a]["_category.id"],categories)
+            category_ids = [self[a]["_category.id"] for a in categories]
 
         # match ids and entries in the dictionary
         catpairs = map(None,category_ids,categories)
@@ -791,9 +791,9 @@ class CifDic(StarFile.BlockCollection):
         for catid,cat in catpairs:self.cat_map[catid] = cat
 
     def names_in_cat(self,cat):
-        nameblocks = filter(lambda a:self[a].get("_name.category_id","").lower()
-                             ==cat.lower(),self.keys())
-        return map(lambda a:"_" + self[a]["_name.category_id"]+"." + self[a]["_name.object_id"],nameblocks)
+        nameblocks = [a for a in list(self.keys()) if self[a].get("_name.category_id","").lower()
+                             ==cat.lower()]
+        return ["_" + self[a]["_name.category_id"]+"." + self[a]["_name.object_id"] for a in nameblocks]
         
     def get_key_pack(self,category,value,data):
         keyname = self[category][self.unique_spec]
@@ -833,7 +833,7 @@ class CifDic(StarFile.BlockCollection):
             minimum = regexp.group(1)
             maximum = regexp.group(7)
         except AttributeError:
-            print "Can't match %s" % rangeexp
+            print("Can't match %s" % rangeexp)
         if minimum == None: minimum = "." 
         else: minimum = float(minimum)
         if maximum == None: maximum = "." 
@@ -843,34 +843,34 @@ class CifDic(StarFile.BlockCollection):
     def transform_drel(self):
         import drel_yacc
         parser = drel_yacc.parser
-        my_namespace = self.keys()
+        my_namespace = list(self.keys())
         my_namespace = dict(map(None,my_namespace,my_namespace)) 
-        parser.loopable_cats = filter(lambda a:self[a].get("_definition.class","Datum")=="List",self.keys())
-        parser.loopable_cats = map(lambda a:self[a]["_definition.id"],parser.loopable_cats) 
-        parser.listable_items = filter(lambda a:"*" in self[a].get("_type.dimension",""),self.keys()) 
-        derivable_list = filter(lambda a:self[a].has_key("_method.expression") and self[a].get("_definition.scope","")!='Category' and self[a].get("_name.category_id","")!= "function",self.keys())
+        parser.loopable_cats = [a for a in list(self.keys()) if self[a].get("_definition.class","Datum")=="List"]
+        parser.loopable_cats = [self[a]["_definition.id"] for a in parser.loopable_cats] 
+        parser.listable_items = [a for a in list(self.keys()) if "*" in self[a].get("_type.dimension","")] 
+        derivable_list = [a for a in list(self.keys()) if "_method.expression" in self[a] and self[a].get("_definition.scope","")!='Category' and self[a].get("_name.category_id","")!= "function"]
         for derivable in derivable_list:
             parser.target_id = derivable
             # reset the list of visible names for parser
             parser.special_id = [my_namespace]
             # reset list of looped with statements
             parser.withtable = {}
-            print "Target id: %s" % derivable
+            print("Target id: %s" % derivable)
             drel_expr = self[derivable]["_method.expression"]
-            if isinstance(drel_expr,ListType):
+            if isinstance(drel_expr,list):
                drel_expr = drel_expr[0] 
-            print "Transforming %s" % drel_expr
+            print("Transforming %s" % drel_expr)
             # List categories are treated differently...
             pyth_meth = parser.parse(drel_expr,debug=True)
-            self[derivable]["_loop_categories"] = pyth_meth[1].keys()
+            self[derivable]["_loop_categories"] = list(pyth_meth[1].keys())
             self[derivable]["_method.expression"] = drel_yacc.make_func(pyth_meth,"pyfunc",None) 
-            print "Final result:\n " + self[derivable]["_method.expression"]
+            print("Final result:\n " + self[derivable]["_method.expression"])
 
     def add_drel_funcs(self):
         import drel_yacc
-        funclist = filter(lambda a:self[a].get("_name.category_id","")=='function',self.keys())
-        funcnames = map(lambda a:self[a]["_name.object_id"],funclist)
-        funcbodys = map(lambda a:self[a]["_method.expression"],funclist)
+        funclist = [a for a in list(self.keys()) if self[a].get("_name.category_id","")=='function']
+        funcnames = [self[a]["_name.object_id"] for a in funclist]
+        funcbodys = [self[a]["_method.expression"] for a in funclist]
         # create executable python code...
         parser = drel_yacc.parser
         for funcname,funcbody in zip(funcnames,funcbodys):
@@ -878,11 +878,11 @@ class CifDic(StarFile.BlockCollection):
             parser.special_id = [{}]   #first element is always global namespace of dictionary
             parser.withtable = {}
             res,ww = parser.parse(funcbody[0])
-            print 'dREL library function ->\n' + res
+            print('dREL library function ->\n' + res)
             global_table = globals()
             global_table.update(self.ddlm_functions)
-            exec res in global_table    #add to namespace
-        print "All functions -> " + `self.ddlm_functions`
+            exec(res, global_table)    #add to namespace
+        print("All functions -> " + repr(self.ddlm_functions))
  
     def switch_numpy(self,to_val):
         if to_val:
@@ -900,23 +900,23 @@ class CifDic(StarFile.BlockCollection):
             index_vals = self[key]["_enumeration_default.index"]
             val_to_index = cifdata[def_index_val]     #what we are keying on
             # Handle loops
-            if isinstance(val_to_index,ListType):
-                keypos = map(lambda a:index_vals.index(a),val_to_index)
-                result = map(lambda a:self[key]["_enumeration_default.value"][a] ,keypos)
+            if isinstance(val_to_index,list):
+                keypos = [index_vals.index(a) for a in val_to_index]
+                result = [self[key]["_enumeration_default.value"][a] for a in keypos]
             else:
                 keypos = index_vals.index(val_to_index)   #value error if no such value available
                 result = self[key]["_enumeration_default.value"][keypos] 
-            print "Indexed on %s to get %s for %s" % (def_index_val,`result`,`val_to_index`)
+            print("Indexed on %s to get %s for %s" % (def_index_val,repr(result),repr(val_to_index)))
             return result
         # read it in
         the_category = self[key]["_name.category_id"]
         the_type = self[the_category]["_definition.class"]
         global_table = globals()
         global_table.update(self.ddlm_functions)
-        exec the_func in global_table,locals() #will access dREL functions, puts "pyfunc" in scope
-        print 'Executing following function'
-        print the_func
-        print 'With following loop categories:' + `self[key].get("_loop_categories","")`
+        exec(the_func, global_table,locals()) #will access dREL functions, puts "pyfunc" in scope
+        print('Executing following function')
+        print(the_func)
+        print('With following loop categories:' + repr(self[key].get("_loop_categories","")))
         # print 'in following global environment: ' + `global_table` 
         if self[key].get("_loop_categories",""): 
            loop_category = self[key]["_loop_categories"][0]
@@ -928,8 +928,8 @@ class CifDic(StarFile.BlockCollection):
         # now try to insert the new information into the right place
         # find if items of this category already appear...
            if store_value: 
-               cat_names = filter(lambda a:self[a].get["_name.category_id",None]==the_category,self.keys())
-               has_cat_names = filter(lambda a:cifdata.has_key(a),cat_names)
+               cat_names = [a for a in list(self.keys()) if self[a].get["_name.category_id",None]==the_category]
+               has_cat_names = [a for a in cat_names if a in cifdata]
                if len(has_cat_names)>0:
                   target_loop = cifdata.GetLoop(has_cat_names[0])
                   target_loop[key] = packlist      #lengths must match or else!!
@@ -958,18 +958,18 @@ class CifDic(StarFile.BlockCollection):
             if item_container == 'Array':
                 return self.recursive_numerify(inval) 
         else:
-            if item_container == 'Single': return map(float_with_esd,inval)
-            if item_container == 'Array': return map(self.recursive_numerify,inval)
+            if item_container == 'Single': return list(map(float_with_esd,inval))
+            if item_container == 'Array': return list(map(self.recursive_numerify,inval))
      
     # A utility function to recursively make all atomic values numeric
     # All embedded values will be either StarTuples or StarLists
     def normal_numerify(self,valarray): 
         # print 'Recursive evaluation of %s' % `valarray`
         if isinstance(valarray,StarFile.StarTuple):
-            return StarFile.StarTuple(map(self.recursive_numerify,valarray))
+            return StarFile.StarTuple(list(map(self.recursive_numerify,valarray)))
         if isinstance(valarray,StarFile.StarList):
-            return StarFile.StarList(map(self.recursive_numerify,valarray))
-        if isinstance(valarray,(StringType,IntType,LongType)):
+            return StarFile.StarList(list(map(self.recursive_numerify,valarray)))
+        if isinstance(valarray,(str,IntType,LongType)):
             return float_with_esd(valarray)
         else:
             return valarray    #assume is OK
@@ -994,8 +994,8 @@ class CifDic(StarFile.BlockCollection):
         #for item in item_values:
             #print "Type match " + item_name + " " + item + ":",
         #skip dots and question marks
-        check_all = filter(lambda a: a !="." and a != "?",item_values)
-        check_all = filter(lambda a: mymatch(matchexpr,a) != a, check_all)
+        check_all = [a for a in item_values if a !="." and a != "?"]
+        check_all = [a for a in check_all if mymatch(matchexpr,a) != a]
         if len(check_all)>0: return {"result":False,"bad_values":check_all}
         else: return {"result":True}
 
@@ -1005,21 +1005,21 @@ class CifDic(StarFile.BlockCollection):
         can_esd = self[item_name].get(self.esd_spec,"none") == "esd" 
         if can_esd: return {"result":True}         #must be OK!
         item_values = listify(item_value)
-        check_all = filter(lambda a: get_number_with_esd(a)[1] != None, item_values)
+        check_all = [a for a in item_values if get_number_with_esd(a)[1] != None]
         if len(check_all)>0: return {"result":False,"bad_values":check_all}
         return {"result":True}
 
     def validate_enum_range(self,item_name,item_value):
-        if not self[item_name].has_key("_item_range.minimum") and \
-           not self[item_name].has_key("_item_range.maximum"):
+        if "_item_range.minimum" not in self[item_name] and \
+           "_item_range.maximum" not in self[item_name]:
             return {"result":None}
         minvals = self[item_name].get("_item_range.minimum",default = ["."])
         maxvals = self[item_name].get("_item_range.maximum",default = ["."])
         def makefloat(a):
             if a == ".": return a
             else: return float(a)
-        maxvals = map(makefloat, maxvals)
-        minvals = map(makefloat, minvals)
+        maxvals = list(map(makefloat, maxvals))
+        minvals = list(map(makefloat, minvals))
         rangelist = map(None,minvals,maxvals)
         item_values = listify(item_value)
         def map_check(rangelist,item_value):
@@ -1035,7 +1035,7 @@ class CifDic(StarFile.BlockCollection):
             # debug
             # print "Value %s fails range check %d < x < %d" % (item_value,lower,upper)
             return False
-        check_all = filter(lambda a,b=rangelist: map_check(b,a) != True, item_values)
+        check_all = list(filter(lambda a,b=rangelist: map_check(b,a) != True, item_values))
         if len(check_all)>0: return {"result":False,"bad_values":check_all}
         else: return {"result":True}
                 
@@ -1048,7 +1048,7 @@ class CifDic(StarFile.BlockCollection):
         enum_list.append("?")   #unknown
         item_values = listify(item_value)
         #print "Enum check: %s in %s" % (`item_values`,`enum_list`)
-        check_all = filter(lambda a: a not in enum_list,item_values)
+        check_all = [a for a in item_values if a not in enum_list]
         if len(check_all)>0: return {"result":False,"bad_values":check_all}
         else: return {"result":True}
 
@@ -1057,19 +1057,19 @@ class CifDic(StarFile.BlockCollection):
             must_loop = self[item_name][self.must_loop_spec]
         except KeyError:
             return {"result":None}
-        if must_loop == 'yes' and isinstance(item_value,StringType): # not looped
+        if must_loop == 'yes' and isinstance(item_value,str): # not looped
             return {"result":False}      #this could be triggered
-        if must_loop == 'no' and not isinstance(item_value,StringType): 
+        if must_loop == 'no' and not isinstance(item_value,str): 
             return {"result":False}
         return {"result":True}
 
 
     def validate_loop_membership(self,loop_names):
         try:
-            categories = map(lambda a:self[a][self.cat_spec],loop_names)
+            categories = [self[a][self.cat_spec] for a in loop_names]
         except KeyError:       #category is mandatory
             raise ValidCifError( "%s missing from dictionary %s for item in loop containing %s" % (self.cat_spec,self.dicname,loop_names[0]))
-        bad_items =  filter(lambda a:a != categories[0],categories)
+        bad_items =  [a for a in categories if a != categories[0]]
         if len(bad_items)>0:
             return {"result":False,"bad_items":bad_items}
         else: return {"result":True}
@@ -1080,7 +1080,7 @@ class CifDic(StarFile.BlockCollection):
         entry_name = self.cat_map[category]
         key_spec = self[entry_name].get("_category_mandatory.name",[])
         for names_to_check in key_spec:
-            if isinstance(names_to_check,StringType):   #only one
+            if isinstance(names_to_check,str):   #only one
                 names_to_check = [names_to_check]
             for loop_key in names_to_check:
                 if loop_key not in loop_names: 
@@ -1091,44 +1091,44 @@ class CifDic(StarFile.BlockCollection):
                     if alternates == []: 
                         return {"result":False,"bad_items":loop_key}
                     for alt_names in alternates:
-                        alt = filter(lambda a:a in loop_names,alt_names)
+                        alt = [a for a in alt_names if a in loop_names]
                         if len(alt) == 0: 
                             return {"result":False,"bad_items":loop_key}  # no alternates   
         return {"result":True}
         
     def validate_loop_references(self,loop_names):
-        must_haves = map(lambda a:self[a].get(self.list_ref_spec,None),loop_names)
-        must_haves = filter(lambda a:a != None,must_haves)
+        must_haves = [self[a].get(self.list_ref_spec,None) for a in loop_names]
+        must_haves = [a for a in must_haves if a != None]
         # build a flat list.  For efficiency we don't remove duplicates,as
         # we expect no more than the order of 10 or 20 looped names.
         def flat_func(a,b): 
-            if isinstance(b,StringType): 
+            if isinstance(b,str): 
                a.append(b)       #single name
             else:
                a.extend(b)       #list of names
             return a
         flat_mh = reduce(flat_func,must_haves,[])
-        group_mh = filter(lambda a:a[-1]=="_",flat_mh)
-        single_mh = filter(lambda a:a[-1]!="_",flat_mh)
-        res = filter(lambda a: a not in loop_names,single_mh)
+        group_mh = [a for a in flat_mh if a[-1]=="_"]
+        single_mh = [a for a in flat_mh if a[-1]!="_"]
+        res = [a for a in single_mh if a not in loop_names]
         def check_gr(s_item, name_list):
-            nl = map(lambda a:a[:len(s_item)],name_list)
+            nl = [a[:len(s_item)] for a in name_list]
             if s_item in nl: return True
             return False
-        res_g = filter(lambda a:check_gr(a,loop_names),group_mh)
+        res_g = [a for a in group_mh if check_gr(a,loop_names)]
         if len(res) == 0 and len(res_g) == 0: return {"result":True}
         # construct alternate list
-        alternates = map(lambda a: (a,self.get_alternates(a)),res)
-        alternates = filter(lambda a:a[1] != [], alternates)
+        alternates = [(a,self.get_alternates(a)) for a in res]
+        alternates = [a for a in alternates if a[1] != []]
         # next two lines purely for error reporting
-        missing_alts = filter(lambda a: a[1] == [], alternates)
-        missing_alts = map(lambda a:a[0],missing_alts)
+        missing_alts = [a for a in alternates if a[1] == []]
+        missing_alts = [a[0] for a in missing_alts]
         if len(alternates) != len(res): 
            return {"result":False,"bad_items":missing_alts}   #short cut; at least one
                                                        #doesn't have an altern
         #loop over alternates
         for orig_name,alt_names in alternates:
-             alt = filter(lambda a:a in loop_names,alt_names)
+             alt = [a for a in alt_names if a in loop_names]
              if len(alt) == 0: return {"result":False,"bad_items":orig_name}# no alternates   
         return {"result":True}        #found alternates
              
@@ -1137,16 +1137,16 @@ class CifDic(StarFile.BlockCollection):
         alt_names = []
         if alternates != None: 
             alt_names =  self[main_name].get(self.related_item,None)
-            if isinstance(alt_names,StringType): 
+            if isinstance(alt_names,str): 
                 alt_names = [alt_names]
                 alternates = [alternates]
             together = map(None,alt_names,alternates)
             if exclusive_only:
-                alt_names = filter(lambda a:a[1]=="alternate_exclusive" \
-                                             or a[1]=="replace", together)
+                alt_names = [a for a in together if a[1]=="alternate_exclusive" \
+                                             or a[1]=="replace"]
             else:
-                alt_names = filter(lambda a:a[1]=="alternate" or a[1]=="replace",together)
-            alt_names = map(lambda a:a[0],alt_names)
+                alt_names = [a for a in together if a[1]=="alternate" or a[1]=="replace"]
+            alt_names = [a[0] for a in alt_names]
         # now do the alias thing
         alias_names = listify(self[main_name].get("_item_aliases.alias_name",[]))
         alt_names.extend(alias_names)
@@ -1155,13 +1155,13 @@ class CifDic(StarFile.BlockCollection):
         
 
     def validate_exclusion(self,item_name,item_value,whole_block,provisional_items={},globals={}):
-       alternates = map(lambda a:a.lower(),self.get_alternates(item_name,exclusive_only=True))
-       item_name_list = map(lambda a:a.lower(),whole_block.keys())
-       item_name_list.extend(map(lambda a:a.lower(),provisional_items.keys()))
-       item_name_list.extend(map(lambda a:a.lower(),globals.keys()))
-       bad = filter(lambda a:a in item_name_list,alternates)
+       alternates = [a.lower() for a in self.get_alternates(item_name,exclusive_only=True)]
+       item_name_list = [a.lower() for a in list(whole_block.keys())]
+       item_name_list.extend([a.lower() for a in list(provisional_items.keys())])
+       item_name_list.extend([a.lower() for a in list(globals.keys())])
+       bad = [a for a in alternates if a in item_name_list]
        if len(bad)>0:
-           print "Bad: %s, alternates %s" % (`bad`,`alternates`)
+           print("Bad: %s, alternates %s" % (repr(bad),repr(alternates)))
            return {"result":False,"bad_items":bad}
        else: return {"result":True}
 
@@ -1169,16 +1169,16 @@ class CifDic(StarFile.BlockCollection):
     def validate_parent(self,item_name,item_value,whole_block,provisional_items={},globals={}):
         parent_item = self[item_name].get(self.parent_spec)
         if not parent_item: return {"result":None}   #no parent specified
-        if isinstance(parent_item,ListType): 
+        if isinstance(parent_item,list): 
             parent_item = parent_item[0]
         if self.optimize:
             if parent_item in self.done_parents:
                 return {"result":None}
             else: 
                 self.done_parents.append(parent_item)
-                print "Done parents %s" % `self.done_parents`
+                print("Done parents %s" % repr(self.done_parents))
         # initialise parent/child values
-        if isinstance(item_value,StringType):
+        if isinstance(item_value,str):
             child_values = [item_value]
         else: child_values = item_value[:]    #copy for safety
         # track down the parent
@@ -1192,12 +1192,12 @@ class CifDic(StarFile.BlockCollection):
             parent_values = provisional_items.get(parent_item,whole_block.get(parent_item))
         if not parent_values:  
             # go for alternates
-            namespace = whole_block.keys()
-            namespace.extend(provisional_items.keys())
-            namespace.extend(globals.keys())
+            namespace = list(whole_block.keys())
+            namespace.extend(list(provisional_items.keys()))
+            namespace.extend(list(globals.keys()))
             alt_names = filter_present(self.get_alternates(parent_item),namespace)
             if len(alt_names) == 0:
-                if len(filter(lambda a:a != "." and a != "?",child_values))>0:
+                if len([a for a in child_values if a != "." and a != "?"])>0:
                     return {"result":False,"parent":parent_item}#no parent available -> error
                 else:
                     return {"result":None}       #maybe True is more appropriate??
@@ -1205,7 +1205,7 @@ class CifDic(StarFile.BlockCollection):
             parent_values = provisional_items.get(parent_item,whole_block.get(parent_item))
             if not parent_values:   # check global block
                 parent_values = globals.get(parent_item)
-        if isinstance(parent_values,StringType):
+        if isinstance(parent_values,str):
             parent_values = [parent_values]   
         #print "Checking parent %s against %s, values %s/%s" % (parent_item,
         #                                          item_name,`parent_values`,`child_values`)
@@ -1220,11 +1220,11 @@ class CifDic(StarFile.BlockCollection):
         except KeyError:
             return {"result":None}    #not relevant
         # special case for dictionaries  -> we check parents of children only
-        if globals.has_key(item_name):  #dictionary so skip
+        if item_name in globals:  #dictionary so skip
             return {"result":None}
-        if isinstance(child_items,StringType): # only one child
+        if isinstance(child_items,str): # only one child
             child_items = [child_items]
-        if isinstance(item_value,StringType): # single value
+        if isinstance(item_value,str): # single value
             parent_values = [item_value]
         else: parent_values = item_value[:]
         # expand child list with list of alternates
@@ -1237,13 +1237,13 @@ class CifDic(StarFile.BlockCollection):
                     return {"result":None}
                 else: 
                     self.done_children.append(child_item)
-                    print "Done children %s" % `self.done_children`
-            if provisional_items.has_key(child_item):
+                    print("Done children %s" % repr(self.done_children))
+            if child_item in provisional_items:
                 child_values = provisional_items[child_item][:]
-            elif whole_block.has_key(child_item):
+            elif child_item in whole_block:
                 child_values = whole_block[child_item][:]
             else:  continue 
-            if isinstance(child_values,StringType):
+            if isinstance(child_values,str):
                 child_values = [child_values]
             #    print "Checking child %s against %s, values %s/%s" % (child_item,
             #                                          item_name,`child_values`,`parent_values`)
@@ -1257,7 +1257,7 @@ class CifDic(StarFile.BlockCollection):
         # shield ourselves from dots and question marks
         pv = parent_vals[:]
         pv.extend([".","?"])
-        res =  filter(lambda a:a not in pv,child_vals)
+        res =  [a for a in child_vals if a not in pv]
         #print "Missing: %s" % res
         return res
 
@@ -1266,10 +1266,10 @@ class CifDic(StarFile.BlockCollection):
             child_items = self[item_name][self.child_spec]
         except KeyError:
             return {"result":None}
-        if isinstance(child_items,StringType): # only one child
+        if isinstance(child_items,str): # only one child
             child_items = [child_items]
         for child_item in child_items:
-            if whole_block.has_key(child_item): 
+            if child_item in whole_block: 
                 return {"result":False,"child":child_item}
         return {"result":True}
          
@@ -1278,21 +1278,21 @@ class CifDic(StarFile.BlockCollection):
             dep_items = self[item_name][self.dep_spec][:]
         except KeyError:
             return {"result":None}    #not relevant
-        if isinstance(dep_items,StringType):
+        if isinstance(dep_items,str):
             dep_items = [dep_items]
-        actual_names = whole_block.keys()
-        actual_names.extend(prov.keys())
-        actual_names.extend(globals.keys())
-        missing = filter(lambda a:a not in actual_names,dep_items)
+        actual_names = list(whole_block.keys())
+        actual_names.extend(list(prov.keys()))
+        actual_names.extend(list(globals.keys()))
+        missing = [a for a in dep_items if a not in actual_names]
         if len(missing) > 0:
-            alternates = map(lambda a:[self.get_alternates(a),a],missing)
+            alternates = [[self.get_alternates(a),a] for a in missing]
             # compact way to get a list of alternative items which are 
             # present
-            have_check = map(lambda b:[filter_present(b[0],actual_names),
-                                       b[1]],alternates) 
-            have_check = filter(lambda a:len(a[0])==0,have_check)
+            have_check = [[filter_present(b[0],actual_names),
+                                       b[1]] for b in alternates] 
+            have_check = [a for a in have_check if len(a[0])==0]
             if len(have_check) > 0:
-                have_check = map(lambda a:a[1],have_check)
+                have_check = [a[1] for a in have_check]
                 return {"result":False,"bad_items":have_check}
         return {"result":True}
         
@@ -1300,17 +1300,17 @@ class CifDic(StarFile.BlockCollection):
                                                                   globals={}):
         category = self[item_name].get(self.cat_spec)
         if category == None:
-            print "No category found for %s" % item_name
+            print("No category found for %s" % item_name)
             return {"result":None}
         # print "Category %s for item %s" % (`category`,item_name)
         catentry = self.cat_map[category]
         # we make a copy in the following as we will be removing stuff later!
         unique_i = self[catentry].get("_category_key.name",[])[:]
-        if isinstance(unique_i,StringType):
+        if isinstance(unique_i,str):
             unique_i = [unique_i]
         if item_name not in unique_i:       #no need to verify
             return {"result":None}
-        if isinstance(item_value,StringType):  #not looped
+        if isinstance(item_value,str):  #not looped
             return {"result":None}
         # print "Checking %s -> %s -> %s ->Unique: " % (item_name,category,catentry) + `unique_i`
         # check that we can't optimize by not doing this check
@@ -1328,9 +1328,9 @@ class CifDic(StarFile.BlockCollection):
            # we look for the value first in the provisional dict, then the main block
            # the logic being that anything in the provisional dict overrides the
            # main block
-               if provisional_items.has_key(other_name):
+               if other_name in provisional_items:
                    other_data.append(provisional_items[other_name]) 
-               elif whole_block.has_key(other_name):
+               elif other_name in whole_block:
                    other_data.append(whole_block[other_name])
                elif self[other_name].get(self.must_exist_spec)=="implicit":
                    other_data.append([item_name]*len(item_value))  #placeholder
@@ -1355,36 +1355,33 @@ class CifDic(StarFile.BlockCollection):
     def validate_mandatory_category(self,whole_block,globals={},fake_mand=False):
         if fake_mand:
             return {"result":True}
-        mand_cats = filter(lambda a:self[a].get("_category.mandatory_code","no")=="yes",
-                    self.keys())
+        mand_cats = [a for a in list(self.keys()) if self[a].get("_category.mandatory_code","no")=="yes"]
         # map to actual ids
-        catlist = self.cat_map.items()
+        catlist = list(self.cat_map.items())
         # print "Mandatory categories - %s" % `mand_cats`
-        all_keys = whole_block.keys() #non-save block keys
+        all_keys = list(whole_block.keys()) #non-save block keys
         if globals:         #
             all_keys.extend(globals.abs_all_keys)
         for mand_cat in mand_cats:
             cat_id = filter(lambda a:a[1]==mand_cat,catlist)[0][0]
-            no_of_items = len(filter(lambda a:self[a].get(self.cat_spec)==cat_id,
-                                 all_keys))
+            no_of_items = len([a for a in all_keys if self[a].get(self.cat_spec)==cat_id])
             if no_of_items == 0:
                 return {"result":False,"bad_items":cat_id}
         return {"result":True}
 
     def find_prob_cats(self,whole_block):
-        mand_cats = filter(lambda a:self[a].get("_category.mandatory_code","no")=="yes",
-                    self.keys())
+        mand_cats = [a for a in list(self.keys()) if self[a].get("_category.mandatory_code","no")=="yes"]
         # map to actual ids
-        catlist = self.cat_map.items()
+        catlist = list(self.cat_map.items())
         # find missing categories
         wbs = whole_block["saves"]
-        abs_all_keys = whole_block.keys()
-        abs_all_keys.extend(reduce(lambda a,b:a+(wbs[b].keys()),wbs.keys(),[]))
+        abs_all_keys = list(whole_block.keys())
+        abs_all_keys.extend(reduce(lambda a,b:a+(list(wbs[b].keys())),list(wbs.keys()),[]))
         prob_cats = []
         for mand_cat in mand_cats:
             cat_id = filter(lambda a:a[1]==mand_cat,catlist)[0][0]
             
-            if len(filter(lambda a:self[a].get(self.cat_spec)==cat_id,abs_all_keys))==0:
+            if len([a for a in abs_all_keys if self[a].get(self.cat_spec)==cat_id])==0:
                 prob_cats.append(cat_id)
         if len(prob_cats) > 0:
             return (False,{'whole_block':[('validate_mandatory_category',{"result":False,"bad_items":problem_cats})]})
@@ -1393,17 +1390,17 @@ class CifDic(StarFile.BlockCollection):
 
 
     def run_item_validation(self,item_name,item_value):
-        return {item_name:map(lambda f:(f.__name__,f(item_name,item_value)),self.item_validation_funs)}
+        return {item_name:[(f.__name__,f(item_name,item_value)) for f in self.item_validation_funs]}
 
     def run_loop_validation(self,loop_names):
-        return {loop_names[0]:map(lambda f:(f.__name__,f(loop_names)),self.loop_validation_funs)}
+        return {loop_names[0]:[(f.__name__,f(loop_names)) for f in self.loop_validation_funs]}
 
     def run_global_validation(self,item_name,item_value,data_block,provisional_items={},globals={}):
-        results = map(lambda f:(f.__name__,f(item_name,item_value,data_block,provisional_items,globals)),self.global_validation_funs)
+        results = [(f.__name__,f(item_name,item_value,data_block,provisional_items,globals)) for f in self.global_validation_funs]
         return {item_name:results}
 
     def run_block_validation(self,whole_block,globals={},fake_mand=False):
-        results = map(lambda f:(f.__name__,f(whole_block,globals,fake_mand)),self.block_validation_funs)
+        results = [(f.__name__,f(whole_block,globals,fake_mand)) for f in self.block_validation_funs]
         # fix up the return values
         return {"whole_block":results}
 
@@ -1424,7 +1421,7 @@ class ValidCifBlock(CifBlock):
     def __init__(self,dic = None, diclist=[], mergemode = "replace",*args,**kwords):
         CifBlock.__init__(self,*args,**kwords)    
         if dic and diclist:
-            print "Warning: diclist argument ignored when initialising ValidCifBlock"
+            print("Warning: diclist argument ignored when initialising ValidCifBlock")
         if isinstance(dic,CifDic):
             self.fulldic = dic
         else:
@@ -1439,18 +1436,18 @@ class ValidCifBlock(CifBlock):
     def run_data_checks(self,verbose=False):
         self.v_result = {}
         self.fulldic.optimize_on()
-        for dataname in self.keys():
+        for dataname in list(self.keys()):
             update_value(self.v_result,self.fulldic.run_item_validation(dataname,self[dataname]))
             update_value(self.v_result,self.fulldic.run_global_validation(dataname,self[dataname],self))
         for loop in self.loops:
-            update_value(self.v_result,self.fulldic.run_loop_validation(loop.keys()))
+            update_value(self.v_result,self.fulldic.run_loop_validation(list(loop.keys())))
         # now run block-level checks
         update_value(self.v_result,self.fulldic.run_block_validation(self))
         # return false and list of baddies if anything didn't match
         self.fulldic.optimize_off()
-        for test_key in self.v_result.keys():
+        for test_key in list(self.v_result.keys()):
             #print "%s: %s" % (test_key,`self.v_result[test_key]`)
-            self.v_result[test_key] = filter(lambda a:a[1]["result"]==False,self.v_result[test_key])
+            self.v_result[test_key] = [a for a in self.v_result[test_key] if a[1]["result"]==False]
             if len(self.v_result[test_key]) == 0: 
                 del self.v_result[test_key]
         isvalid = len(self.v_result)==0
@@ -1460,46 +1457,46 @@ class ValidCifBlock(CifBlock):
 
     def single_item_check(self,item_name,item_value):
         #self.match_single_item(item_name)
-        if not self.fulldic.has_key(item_name):
+        if item_name not in self.fulldic:
             result = {item_name:[]}
         else:
             result = self.fulldic.run_item_validation(item_name,item_value)
-        baddies = filter(lambda a:a[1]["result"]==False, result[item_name])
+        baddies = [a for a in result[item_name] if a[1]["result"]==False]
         # if even one false one is found, this should trigger
         isvalid = (len(baddies) == 0)
         # if not isvalid: print "Failures for %s:" % item_name + `baddies`
         return isvalid,baddies
 
     def loop_item_check(self,loop_names):
-        in_dic_names = filter(lambda a:self.fulldic.has_key(a),loop_names)
+        in_dic_names = [a for a in loop_names if a in self.fulldic]
         if len(in_dic_names)==0:
             result = {loop_names[0]:[]}
         else:
             result = self.fulldic.run_loop_validation(in_dic_names)
-        baddies = filter(lambda a:a[1]["result"]==False,result[in_dic_names[0]])
+        baddies = [a for a in result[in_dic_names[0]] if a[1]["result"]==False]
         # if even one false one is found, this should trigger
         isvalid = (len(baddies) == 0)
         # if not isvalid: print "Failures for %s:" % `loop_names` + `baddies`
         return isvalid,baddies
 
     def global_item_check(self,item_name,item_value,provisional_items={}):
-        if not self.fulldic.has_key(item_name):
+        if item_name not in self.fulldic:
             result = {item_name:[]}
         else:
             result = self.fulldic.run_global_validation(item_name,
                item_value,self,provisional_items = provisional_items)
-        baddies = filter(lambda a:a[1]["result"]==False,result[item_name])
+        baddies = [a for a in result[item_name] if a[1]["result"]==False]
         # if even one false one is found, this should trigger
         isvalid = (len(baddies) == 0)
         # if not isvalid: print "Failures for %s:" % item_name + `baddies`
         return isvalid,baddies
 
     def remove_global_item_check(self,item_name):
-        if not self.fulldic.has_key(item_name):
+        if item_name not in self.fulldic:
             result = {item_name:[]}
         else:
             result = self.fulldic.run_remove_global_validation(item_name,self,False)
-        baddies = filter(lambda a:a[1]["result"]==False,result[item_name])
+        baddies = [a for a in result[item_name] if a[1]["result"]==False]
         # if even one false one is found, this should trigger
         isvalid = (len(baddies) == 0)
         # if not isvalid: print "Failures for %s:" % item_name + `baddies`
@@ -1507,16 +1504,16 @@ class ValidCifBlock(CifBlock):
 
     def AddToLoop(self,dataname,loopdata):
         # single item checks
-        paired_data = loopdata.items()
+        paired_data = list(loopdata.items())
         for name,value in paired_data:
             valid,problems = self.single_item_check(name,value) 
             self.report_if_invalid(valid,problems)
         # loop item checks; merge with current loop
         found = 0
         for aloop in self.block["loops"]:
-            if aloop.has_key(dataname):
-                loopnames = aloop.keys()
-                for new_name in loopdata.keys():
+            if dataname in aloop:
+                loopnames = list(aloop.keys())
+                for new_name in list(loopdata.keys()):
                     if new_name not in loopnames: loopnames.append(new_name)
                 valid,problems = self.looped_item_check(loopnames)
                 self.report_if_invalid(valid,problems)
@@ -1529,12 +1526,12 @@ class ValidCifBlock(CifBlock):
         CifBlock.AddToLoop(self,dataname,loopdata)
  
     def AddCifItem(self,data):
-        if isinstance(data[0],StringType):   # single item
+        if isinstance(data[0],str):   # single item
             valid,problems = self.single_item_check(data[0],data[1])
             self.report_if_invalid(valid,problems,data[0])
             valid,problems = self.global_item_check(data[0],data[1])
             self.report_if_invalid(valid,problems,data[0])
-        elif isinstance(data[0],TupleType) or isinstance(data[0],ListType):
+        elif isinstance(data[0],tuple) or isinstance(data[0],list):
             paired_data = map(None,data[0],data[1])
             for name,value in paired_data:
                 valid,problems = self.single_item_check(name,value) 
@@ -1554,20 +1551,20 @@ class ValidCifBlock(CifBlock):
     def report_if_invalid(self,valid,bad_list,data_name):
         if not valid:
             error_string = reduce(lambda a,b: a + "," + b[0], bad_list, "") 
-            error_string = `data_name` + " fails following validity checks: "  + error_string
+            error_string = repr(data_name) + " fails following validity checks: "  + error_string
             raise ValidCifError( error_string)
 
     def __delitem__(self,key):
         # we don't need to run single item checks; we do need to run loop and
         # global checks.
-        if self.has_key(key):
+        if key in self:
             try: 
                 loop_items = self.GetLoop(key)
             except TypeError:
                 loop_items = []
             if loop_items:             #need to check loop conformance
-                loop_names = map(lambda a:a[0],loop_items)
-                loop_names = filter(lambda a:a != key,loop_names)
+                loop_names = [a[0] for a in loop_items]
+                loop_names = [a for a in loop_names if a != key]
                 valid,problems = self.loop_item_check(loop_names)
                 self.report_if_invalid(valid,problems)
             valid,problems = self.remove_global_item_check(key)
@@ -1576,12 +1573,12 @@ class ValidCifBlock(CifBlock):
 
 
     def report(self):
-       import cStringIO
-       outstr = cStringIO.StringIO()
+       import io
+       outstr = io.StringIO()
        outstr.write( "Validation results\n")
        outstr.write( "------------------\n")
-       print "%d invalid items found\n" % len(self.v_result)
-       for item_name,val_func_list in self.v_result.items():
+       print("%d invalid items found\n" % len(self.v_result))
+       for item_name,val_func_list in list(self.v_result.items()):
            outstr.write("%s fails following tests:\n" % item_name)
            for val_func in val_func_list:
                outstr.write("\t%s\n")
@@ -1623,7 +1620,7 @@ class ValidationResult:
         if block_name is not None:
             block_names = [block_name]
         else:
-            block_names = self.valid_result.iterkeys()
+            block_names = iter(self.valid_result.keys())
         for block_name in block_names:
             if not self.valid_result[block_name] == (True,{}):
                 valid = False
@@ -1657,7 +1654,7 @@ def validate(ciffile,dic = "", diclist=[],mergemode="replace",isdic=False,fake_m
     no_matches = {}
     valid_result = {}
     if isdic:          #assume one block only
-        blockname = check_file.keys()[0]
+        blockname = list(check_file.keys())[0]
         check_bc = check_file[blockname]["saves"]
         check_globals = check_file[blockname] 
         # collect a list of parents for speed
@@ -1676,13 +1673,13 @@ def validate(ciffile,dic = "", diclist=[],mergemode="replace",isdic=False,fake_m
         # block.
         if fake_mand:
             valid_result[blockname] = fulldic.find_prob_cats(check_globals)
-            no_matches[blockname] = filter(lambda a:not fulldic.has_key(a),check_globals.keys())
+            no_matches[blockname] = [a for a in list(check_globals.keys()) if a not in fulldic]
     else:
         check_bc = check_file
         check_globals = CifBlock()   #empty
-    for block in check_bc.keys(): 
+    for block in list(check_bc.keys()): 
         #print "Validating block %s" % block 
-        no_matches[block] = filter(lambda a:not fulldic.has_key(a),check_bc[block].keys())
+        no_matches[block] = [a for a in list(check_bc[block].keys()) if a not in fulldic]
         # remove non-matching items
         # print "Not matched: " + `no_matches[block]`
         for nogood in no_matches[block]:
@@ -1691,9 +1688,9 @@ def validate(ciffile,dic = "", diclist=[],mergemode="replace",isdic=False,fake_m
     return valid_result,no_matches
 
 def validate_report(val_result,use_html=False):
-    import cStringIO
+    import io
     valid_result,no_matches = val_result
-    outstr = cStringIO.StringIO()
+    outstr = io.StringIO()
     if use_html:
         outstr.write("<h2>Validation results</h2>")
     else:
@@ -1705,7 +1702,7 @@ def validate_report(val_result,use_html=False):
            outstr.write("<p>For brevity, valid blocks are not reported in the output.</p>")
     else:
         suppress_valid = False
-    for block in valid_result.keys():
+    for block in list(valid_result.keys()):
         block_result = valid_result[block]
         if block_result[0]:
             out_line = "Block '%s' is VALID" % block
@@ -1721,15 +1718,15 @@ def validate_report(val_result,use_html=False):
                 outstr.write( "<p>The following items were not found in the dictionary")
                 outstr.write(" (note that this does not invalidate the data block):</p>")
                 outstr.write("<p><table>\n")
-                map(lambda it:outstr.write("<tr><td>%s</td></tr>" % it),no_matches[block])
+                list(map(lambda it:outstr.write("<tr><td>%s</td></tr>" % it),no_matches[block]))
                 outstr.write("</table>\n")
             else:
                 outstr.write( "\n The following items were not found in the dictionary:\n")
                 outstr.write("Note that this does not invalidate the data block\n")
-                map(lambda it:outstr.write("%s\n" % it),no_matches[block])
+                list(map(lambda it:outstr.write("%s\n" % it),no_matches[block]))
         # now organise our results by type of error, not data item...
         error_type_dic = {}
-        for error_item, error_list in block_result[1].items():
+        for error_item, error_list in list(block_result[1].items()):
             for func_name,bad_result in error_list:
                 bad_result.update({"item_name":error_item})
                 try:
@@ -1767,7 +1764,7 @@ def validate_report(val_result,use_html=False):
         'validate_mandatory_category':\
             "A required category is missing from this block"}
 
-        for test_name,test_results in error_type_dic.items():
+        for test_name,test_results in list(error_type_dic.items()):
            if use_html:
                outstr.write(html_error_report(test_name,info_table[test_name],test_results)) 
            else:
@@ -1784,25 +1781,25 @@ def error_report(error_name,error_explanation,error_dics):
    retstring = "\n\n " + error_explanation + ":\n\n"
    headstring = "%-32s" % "Item name"
    bodystring = ""
-   if error_dics[0].has_key("bad_values"):
+   if "bad_values" in error_dics[0]:
       headstring += "%-20s" % "Bad value(s)"
-   if error_dics[0].has_key("bad_items"):
+   if "bad_items" in error_dics[0]:
       headstring += "%-20s" % "Bad dataname(s)"
-   if error_dics[0].has_key("child"):
+   if "child" in error_dics[0]:
       headstring += "%-20s" % "Child"
-   if error_dics[0].has_key("parent"):
+   if "parent" in error_dics[0]:
       headstring += "%-20s" % "Parent" 
    headstring +="\n"
    for error in error_dics:
       bodystring += "\n%-32s" % error["item_name"]
-      if error.has_key("bad_values"):
-          out_vals = map(lambda a:a[:50],error["bad_values"])
+      if "bad_values" in error:
+          out_vals = [a[:50] for a in error["bad_values"]]
           bodystring += "%-20s" % out_vals 
-      if error.has_key("bad_items"):
+      if "bad_items" in error:
           bodystring += "%-20s" % error["bad_items"]
-      if error.has_key("child"):
+      if "child" in error:
           bodystring += "%-20s" % error["child"]
-      if error.has_key("parent"):
+      if "parent" in error:
           bodystring += "%-20s" % error["parent"]
    return retstring + headstring + bodystring 
 
@@ -1813,39 +1810,39 @@ def html_error_report(error_name,error_explanation,error_dics,annotate=[]):
    retstring = retstring + "<table cellpadding=5><tr>"
    headstring = "<th>Item name</th>"
    bodystring = ""
-   if error_dics[0].has_key("bad_values"):
+   if "bad_values" in error_dics[0]:
       headstring += "<th>Bad value(s)</th>"
-   if error_dics[0].has_key("bad_items"):
+   if "bad_items" in error_dics[0]:
       headstring += "<th>Bad dataname(s)</th>"
-   if error_dics[0].has_key("child"):
+   if "child" in error_dics[0]:
       headstring += "<th>Child</th>"
-   if error_dics[0].has_key("parent"):
+   if "parent" in error_dics[0]:
       headstring += "<th>Parent</th>" 
    headstring +="</tr>\n"
    for error in error_dics:
       bodystring += "<tr><td><tt>%s</tt></td>" % error["item_name"]
-      if error.has_key("bad_values"):
+      if "bad_values" in error:
           bodystring += "<td>%s</td>" % error["bad_values"]
-      if error.has_key("bad_items"):
+      if "bad_items" in error:
           bodystring += "<td><tt>%s</tt></td>" % error["bad_items"]
-      if error.has_key("child"):
+      if "child" in error:
           bodystring += "<td><tt>%s</tt></td>" % error["child"]
-      if error.has_key("parent"):
+      if "parent" in error:
           bodystring += "<td><tt>%s</tt></td>" % error["parent"]
       bodystring += "</tr>\n"
    return retstring + headstring + bodystring + "</table>\n"
 
 def run_data_checks(check_block,fulldic,globals={},fake_mand=False):
     v_result = {}
-    for key in check_block.keys():
+    for key in list(check_block.keys()):
         update_value(v_result, fulldic.run_item_validation(key,check_block[key]))
         update_value(v_result, fulldic.run_global_validation(key,check_block[key],check_block,globals=globals))
     for loop in check_block.loops:
-        update_value(v_result, fulldic.run_loop_validation(loop.keys()))
+        update_value(v_result, fulldic.run_loop_validation(list(loop.keys())))
     update_value(v_result,fulldic.run_block_validation(check_block,globals=globals,fake_mand=fake_mand))
     # return false and list of baddies if anything didn't match
-    for test_key in v_result.keys():
-        v_result[test_key] = filter(lambda a:a[1]["result"]==False,v_result[test_key])
+    for test_key in list(v_result.keys()):
+        v_result[test_key] = [a for a in v_result[test_key] if a[1]["result"]==False]
         if len(v_result[test_key]) == 0: 
             del v_result[test_key]
     # if even one false one is found, this should trigger
@@ -1880,7 +1877,7 @@ def get_number_with_esd(numstring):
     return base_num,esd
 
 def float_with_esd(inval):
-    if isinstance(inval,StringType):
+    if isinstance(inval,str):
         j = inval.find("(")
         if j>=0:  return float(inval[:j])
     return float(inval)
@@ -1889,8 +1886,8 @@ def float_with_esd(inval):
                 
 # A utility function to append to item values rather than replace them
 def update_value(base_dict,new_items):
-    for new_key in new_items.keys():
-        if base_dict.has_key(new_key):
+    for new_key in list(new_items.keys()):
+        if new_key in base_dict:
             base_dict[new_key].extend(new_items[new_key])
         else:
             base_dict[new_key] = new_items[new_key]
@@ -1899,7 +1896,7 @@ def update_value(base_dict,new_items):
 def transpose(base_list):
     new_lofl = []
     full_length = len(base_list)
-    opt_range = range(full_length)
+    opt_range = list(range(full_length))
     for i in range(len(base_list[0])):
        new_packet = [] 
        for j in opt_range:
@@ -1909,13 +1906,13 @@ def transpose(base_list):
 
 # listify strings - used surprisingly often
 def listify(item):
-    if isinstance(item,StringType): return [item]
+    if isinstance(item,str): return [item]
     else: return item
 
 # given a list of search items, return a list of items 
 # actually contained in the given data block
 def filter_present(namelist,datablocknames):
-    return filter(lambda a:a in datablocknames,namelist)
+    return [a for a in namelist if a in datablocknames]
 
 # merge ddl dictionaries.  We should be passed filenames or CifFile
 # objects
@@ -1923,34 +1920,34 @@ def merge_dic(diclist,mergemode="replace",ddlspec=None):
     dic_as_cif_list = []
     for dic in diclist:
         if not isinstance(dic,CifFile) and \
-           not isinstance(dic,StringType):
-               raise TypeError, "Require list of CifFile names/objects for dictionary merging"
+           not isinstance(dic,str):
+               raise TypeError("Require list of CifFile names/objects for dictionary merging")
         if not isinstance(dic,CifFile): dic_as_cif_list.append(CifFile(dic))
         else: dic_as_cif_list.append(dic)
     # we now merge left to right
     basedic = dic_as_cif_list[0]
-    if basedic.has_key("on_this_dictionary"):   #DDL1 style only
+    if "on_this_dictionary" in basedic:   #DDL1 style only
         for dic in dic_as_cif_list[1:]:
            basedic.merge(dic,mode=mergemode,match_att=["_name"])
-    elif len(basedic.keys()) == 1:                     #One block: DDL2 style
-        old_block = basedic[basedic.keys()[0]]
+    elif len(list(basedic.keys())) == 1:                     #One block: DDL2 style
+        old_block = basedic[list(basedic.keys())[0]]
         for dic in dic_as_cif_list[1:]:
-           new_block = dic[dic.keys()[0]]
+           new_block = dic[list(dic.keys())[0]]
            basedic.merge(dic,mode=mergemode,
-                         single_block=[basedic.keys()[0],dic.keys()[0]],
+                         single_block=[list(basedic.keys())[0],list(dic.keys())[0]],
                          match_att=["_item.name"],match_function=find_parent)
     return CifDic(basedic)
 
 def find_parent(ddl2_def):
-    if not ddl2_def.has_key("_item.name"):
+    if "_item.name" not in ddl2_def:
        return None 
-    if isinstance(ddl2_def["_item.name"],StringType):
+    if isinstance(ddl2_def["_item.name"],str):
         return ddl2_def["_item.name"]
-    if not ddl2_def.has_key("_item_linked.child_name"):
+    if "_item_linked.child_name" not in ddl2_def:
         raise CifError("Asked to find parent in block with no child_names")
-    if not ddl2_def.has_key("_item_linked.parent_name"):
+    if "_item_linked.parent_name" not in ddl2_def:
         raise CifError("Asked to find parent in block with no parent_names")
-    result = filter(lambda a:a not in ddl2_def["_item_linked.child_name"],ddl2_def["_item.name"]) 
+    result = [a for a in ddl2_def["_item.name"] if a not in ddl2_def["_item_linked.child_name"]] 
     if len(result)>1 or len(result)==0:
         raise CifError("Unable to find single unique parent data item")
     return result[0]
@@ -1961,8 +1958,8 @@ def ReadCif(filename,strict=1,maxlength=2048,scantype="standard",grammar="1.1"):
     # convert to CifFile
     proto_cif = CifFile(proto_cif)
     # check for nested loops
-    for bname,bvalue in proto_cif.items():
-        nests = filter(lambda a:len(a.loops)>0,bvalue.loops)
+    for bname,bvalue in list(proto_cif.items()):
+        nests = [a for a in bvalue.loops if len(a.loops)>0]
         if len(nests) > 0:
             raise CifError( "Block %s contains nested loops")
         # check for save frame references (not yet implemented in PySTARRW)

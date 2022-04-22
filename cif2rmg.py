@@ -25,13 +25,14 @@ if cif_file:
 
 ##############################################
 # Get blocks
-cfkeys = cf.keys()
+cfkeys = list(cf.keys())
 cb = cf.get(cfkeys[0])
 # Get reference data
 ref = ReferenceData()
 ref.getFromCIF(cb)
 # Get cell data
 cd = CellData()
+cd.force = True
 cd.getFromCIF(cb)
 
 
@@ -48,4 +49,4 @@ outputfile = "rmg_input"
 ################################################################################################
 docstring = ''
 rmginput = RMGFile(cd, docstring)
-print(rmginput)
+print(rmginput) 

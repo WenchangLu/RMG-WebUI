@@ -21,7 +21,7 @@
 #  Affiliation: COMP, Aaalto University School of Science,
 #               Department of Applied Physics, Espoo, Finland
 #******************************************************************************************
-from __future__ import division
+
 from math import sqrt,acos
 from elementdata import *
 ################################################################################################
@@ -344,7 +344,7 @@ class AtomSite(GeometryObject):
         else:
             if self.species != None:
                 self.charges = {}
-                for k in self.species.keys():
+                for k in list(self.species.keys()):
                     self.charges[k] = Charge(0)
             else:
                 self.charges = {}
@@ -368,7 +368,7 @@ class AtomSite(GeometryObject):
         return tmp
     # Is there more than one species on this site?
     def alloy(self):
-        occsum = sum([v for k,v in self.species.iteritems()])
+        occsum = sum([v for k,v in self.species.items()])
         return len(self.species) > 1 or abs(occsum-1) > self.compeps
     # print site data in some informative way
     def __str__(self):
@@ -377,7 +377,7 @@ class AtomSite(GeometryObject):
         # Position
         tmp += " %19.15f %19.15f %19.15f   "%(self.position[0],self.position[1],self.position[2])
         # occupancy
-        for k,v in self.species.iteritems():
+        for k,v in self.species.items():
             tmp += str(v)+"/"
         tmp = tmp.rstrip("/")
         return tmp
@@ -389,13 +389,13 @@ class AtomSite(GeometryObject):
         """
         t = []
         if covalent:
-            for sp in self.species.keys():
+            for sp in list(self.species.keys()):
                 try:
                     t.append(ElementData().CovalentRadius2[sp])
                 except:
                     pass
         else:
-            for sp,ch in self.charges.iteritems():
+            for sp,ch in self.charges.items():
                 try:
                     t.append(ElementData().IonicRadius[sp+str(ch)])
                 except:

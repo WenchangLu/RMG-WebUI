@@ -9,7 +9,7 @@ lastval = ''
 def monitor(location,value):
     global lastval
     # print 'At %s: %s' % (location,`value`)
-    lastval = `value`
+    lastval = repr(value)
     return value
 
 # Strip extras gets rid of leading and trailing whitespace, and
@@ -66,9 +66,9 @@ def makeloop(loopstructure,itemlists):
     for datalist in itemlists:
        for datavalue in datalist:
            try:
-               nowloop,target = storage_iter.next()
+               nowloop,target = next(storage_iter)
            except StopIteration:
-               print "StopIter at %s/%s" % (datavalue,datalist)
+               print("StopIter at %s/%s" % (datavalue,datalist))
                raise StopIteration
            # print 'Got %s %s ->' % (`nowloop`,`target`),
            target.append(datavalue)
@@ -76,7 +76,7 @@ def makeloop(loopstructure,itemlists):
        # the end of each list is the same as a stop_ token
        # print 'Saw end of list'
        nowloop.popout = True
-       nowloop,blank = storage_iter.next()  #execute the pop
+       nowloop,blank = next(storage_iter)  #execute the pop
        # print 'discarding %s/%s' % (`nowloop`,`blank`)
     # print 'Makeloop returning %s' % `loopstructure`
     return loopstructure
@@ -105,12 +105,12 @@ def make_empty(nestlevel):
 # (2) new_dict is not empty -> we have some new key-value pairs
 #
 def cif_update(old_dict,new_dict,loops):
-    old_keys = map(lambda a:a.lower(),old_dict.keys())
+    old_keys = [a.lower() for a in list(old_dict.keys())]
     if new_dict != {}:    # otherwise we have a new loop
         #print 'Comparing %s to %s' % (`old_keys`,`new_dict.keys()`)
-        for new_key in new_dict.keys():
+        for new_key in list(new_dict.keys()):
             if new_key.lower() in old_keys:
-                raise CifError, "Duplicate dataname or blockname %s in input file" % new_key
+                raise CifError("Duplicate dataname or blockname %s in input file" % new_key)
             old_dict[new_key] = new_dict[new_key]
 #
 # this takes two lines, so we couldn't fit it into a one line execution statement...

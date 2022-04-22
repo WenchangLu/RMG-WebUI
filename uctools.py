@@ -29,7 +29,7 @@
 #
 #  TODO:        
 #******************************************************************************************
-from __future__ import division
+
 import os
 import sys
 import string
@@ -42,6 +42,7 @@ from spacegroupdata import *
 from elementdata import *
 from random import random, gauss
 from fractions import gcd
+from functools import reduce
     
 ################################################################################################
 class CellData(GeometryObject):
@@ -281,7 +282,7 @@ class CellData(GeometryObject):
         for a in self.atomdata:
             # Check concentration
             t = 0.0
-            for sp,conc in a[0].species.iteritems():
+            for sp,conc in a[0].species.items():
                 t += conc
             # Add vacuum spheres if partially empty
             if abs(1.0-t) > a[0].compeps:
@@ -620,10 +621,10 @@ class CellData(GeometryObject):
             self.atomdata.append([])
             self.atomdata[i].append(AtomSite(position=self.ineqsites[i], label=self.sitelabels[i]))
             # Add species and occupations to atomdata
-            for k,v in self.occupations[i].iteritems():
+            for k,v in self.occupations[i].items():
                 self.atomdata[i][0].species[k] = v
                 # Add charge state
-                for k2,v2 in self.chargedict.iteritems():
+                for k2,v2 in self.chargedict.items():
                     if k2.strip(string.punctuation+string.digits) == k:
                         self.atomdata[i][0].charges[k] = v2
             ## self.atomdata[i][0].charge = self.charges[i]
@@ -654,7 +655,7 @@ class CellData(GeometryObject):
                     self.atomdata[i][0].charges.update(self.atomdata[j][0].charges)
                     removeindices.append(j)
                     # ...also fix self.occupations
-                    self.occupations[i][self.occupations[j].keys()[0]] = self.occupations[j].values()[0]
+                    self.occupations[i][list(self.occupations[j].keys())[0]] = list(self.occupations[j].values())[0]
         # Remove duplicate elements
         removeindices = list(set(removeindices))
         removeindices.sort(reverse=True)
@@ -723,16 +724,16 @@ class CellData(GeometryObject):
         # Chemical content dictionary
         for a in self.atomdata:
             for b in a:
-                for k,v in b.species.iteritems():
+                for k,v in b.species.items():
                     if k in self.ChemicalComposition:
                         n = self.ChemicalComposition[k]
                         self.ChemicalComposition[k] = v+n
                     else:
                         self.ChemicalComposition[k] = v
         if not self.alloy:
-            L = self.ChemicalComposition.values()
+            L = list(self.ChemicalComposition.values())
             divisor = reduce(gcd,L)
-            for k,v in self.ChemicalComposition.iteritems():
+            for k,v in self.ChemicalComposition.items():
                 self.ChemicalComposition[k] = v/divisor
         # Number of atoms
         self.numberOfAtoms = self.natoms()
@@ -1087,9 +1088,11 @@ class CellData(GeometryObject):
                 try:
                     eqsitestrs = eqsitedata.get(symopid)
                     # This if fixes a funny exception that can occur for the P1 space group.
-                    if type(eqsitestrs) == StringType:
+                    if type(eqsitestrs) == str:
                         eqsitestrs = [eqsitestrs]
                     eqsites = []
+                    if eqsitestrs == None: 
+                        eqsitestrs = []
                     for i in range(len(eqsitestrs)):
                         tmp = eqsitestrs[i].split(',')
                         eqsites.append([])
@@ -1238,7 +1241,7 @@ class CellData(GeometryObject):
                 sitexer = tmpdata.get('_atom_site_fract_x')
                 siteyer = tmpdata.get('_atom_site_fract_y')
                 sitezer = tmpdata.get('_atom_site_fract_z')
-            if (type(sitexer) == NoneType or type(siteyer) == NoneType or type(sitezer) == NoneType or \
+            if (sitexer == None or siteyer == None or sitezer == None or \
                 '?' in sitexer or '?' in siteyer or '?' in sitezer or \
                 '.' in sitexer or '.' in siteyer or '.' in sitezer):
                 if self.force:
@@ -1255,16 +1258,16 @@ class CellData(GeometryObject):
         
         # Element names
         elementsymbs = tmpdata.get('_atom_site_type_symbol')
-        if type(elementsymbs) == NoneType or '?' in elementsymbs or '.' in elementsymbs:
+        if elementsymbs == None or '?' in elementsymbs or '.' in elementsymbs:
             elementsymbs = tmpdata.get('_atom_site_label')
-            if type(elementsymbs) == NoneType:
+            if elementsymbs == None:
                 # Fill up with question marks if not found
                 sys.stderr.write("***Warning: Could not find element names.\n")
                 elementsymbs = ["??" for site in sitexer]
 
         # Site labels from _atom_site_label
         self.sitelabels = tmpdata.get('_atom_site_label')
-        if type(self.sitelabels) == NoneType:
+        if self.sitelabels == None:
             # Fill up with question marks if not found
             if not self.quiet:
                 sys.stderr.write("Could not find site labels.\n")
@@ -1397,11 +1400,11 @@ class CellData(GeometryObject):
                     tmpstring1 = ""
                     tmpstring2 = ""
                     tmpstring3 = ""
-                    for k,v in b.species.iteritems():
+                    for k,v in b.species.items():
                         tmpstring1 += k+"/"
                         tmpstring2 += str(v).rstrip("0.")+"/"
                         # charge output
-                        for k2,v2 in self.chargedict.iteritems():
+                        for k2,v2 in self.chargedict.items():
                             if k2.strip(string.punctuation+string.digits) == k:
                                 tmpstring3 += str(v2)+"/"
                     tmpstring1 = tmpstring1.rstrip("/")
@@ -1424,7 +1427,7 @@ class CellData(GeometryObject):
             else:
                 w4 = 0
         # Start output
-        print "Bravais lattice vectors :"
+        print("Bravais lattice vectors :")
         # Site header
         siteheader = "Atom".ljust(w1)+" "
         if printcart:
@@ -1458,25 +1461,25 @@ class CellData(GeometryObject):
         for i in range(3):
             formatstring = formatstring+decform+" "
         for i in range(3):
-            print formatstring % (self.latticevectors[i][0]*fact, self.latticevectors[i][1]*fact, self.latticevectors[i][2]*fact)
+            print(formatstring % (self.latticevectors[i][0]*fact, self.latticevectors[i][1]*fact, self.latticevectors[i][2]*fact))
         # Print out all sites
         tmpstring = "All sites, "
         if printcart:
             tmpstring += "(cartesian coordinates):"
         else:
             tmpstring += "(lattice coordinates):"
-        print tmpstring
-        print siteheader
+        print(tmpstring)
+        print(siteheader)
         for a in self.atomdata:
             for b in a:
                 spcsstring = ""
                 occstring = ""
                 chargestring = ""
-                for k,v in b.species.iteritems():
+                for k,v in b.species.items():
                     spcsstring += k+"/"
                     occstring += str(v).rstrip("0.")+"/"
                     # charge output
-                    for k2,v2 in self.chargedict.iteritems():
+                    for k2,v2 in self.chargedict.items():
                         if k2.strip(string.punctuation+string.digits) == k:
                             chargestring += str(v2)+"/"
                 spcsstring = spcsstring.rstrip("/")
@@ -1488,7 +1491,7 @@ class CellData(GeometryObject):
                     tmpstring += " "+occstring.rjust(w3)
                 if printcharges:
                     tmpstring += " "+chargestring.rjust(w4)
-                print tmpstring
+                print(tmpstring)
 
 
 
@@ -1629,9 +1632,9 @@ class ReferenceData:
     def getFromCIF(self, cifblock=None):
         # Get long compound name
         self.compound = cifblock.get('_chemical_name_systematic')
-        if type(self.compound) == NoneType:
+        if self.compound == None:
             self.compound = cifblock.get('_chemical_name_mineral')
-            if type(self.compound) == NoneType:
+            if self.compound == None:
                 self.compound = ""
         # Get short compound name
         try:
@@ -1641,9 +1644,9 @@ class ReferenceData:
                 self.cpd = cifblock.get('_chemical_formula_sum')
             except:
                 self.cpd = ""
-        if type(self.compound) != StringType:
+        if type(self.compound) != str:
             self.compound = ""
-        if type(self.cpd) != StringType:
+        if type(self.cpd) != str:
             self.cpd = ""
         # Ty to set up chemical content set
         try:
@@ -1660,15 +1663,15 @@ class ReferenceData:
                         alloy = True
                     except:
                         raise ValueError()
-                if e in self.ChemicalComposition.keys():
+                if e in list(self.ChemicalComposition.keys()):
                     nold = self.ChemicalComposition[e]
                     self.ChemicalComposition[e] = nold+n
                 else:
                     self.ChemicalComposition[e] = n
             if not alloy:
-                L = self.ChemicalComposition.values()
+                L = list(self.ChemicalComposition.values())
                 divisor = reduce(gcd,L)
-                for k,v in self.ChemicalComposition.iteritems():
+                for k,v in self.ChemicalComposition.items():
                     self.ChemicalComposition[k] = v/divisor
         except:
             # If not found, then ignore, this is just to test internal consistency.
@@ -1678,7 +1681,7 @@ class ReferenceData:
             # First all the standard ones
             try:
                 tmp = cifblock.get('_database_code_'+db)
-                if type(tmp) != NoneType:
+                if tmp != None:
                     self.databasecode = tmp
                     self.database = self.databasenames[db]
                     self.databasestring = "CIF file exported from "+self.database+\
@@ -1698,7 +1701,7 @@ class ReferenceData:
         if self.databasecode == "":
             try:
                 tmp = cifblock.get('_cod_database_code')
-                if type(tmp) != NoneType:
+                if tmp != None:
                     self.databasecode = tmp
                     self.database = self.databasenames["COD"]
                     self.databasestring = "CIF file exported from "+self.database+\
@@ -1712,11 +1715,14 @@ class ReferenceData:
         # Authors
             authorsloop = cifblock.GetLoop('_publ_author_name')
             self.authors = authorsloop.get('_publ_author_name')
-            if type(self.authors) == StringType:
+            if type(self.authors) == str:
                 self.authors = deletenewline(self.authors)
                 self.authorstring = self.authors
                 self.authors = self.authors.split(";")
-            if len(self.authors) == 1:
+            if(self.authors == None):
+                self.authors = []
+                self.authorstring = "Failed to get author information"
+            elif len(self.authors) == 1:
                 self.authorstring = self.authors[0]
             elif len(self.authors) == 2:
                 self.authorstring = self.authors[0]+" and "+self.authors[1]
@@ -1749,43 +1755,43 @@ class ReferenceData:
                 # No primary reference found, using the first one.
                 i = 0
             # journal/book title
-            if type(references.get('_citation_journal_full')) != NoneType:
+            if references.get('_citation_journal_full') != None:
                 self.journal = references.get('_citation_journal_full')[i]
             else:
-                if type(references.get('_citation_journal_abbrev')) != NoneType:
+                if references.get('_citation_journal_abbrev') != None:
                     self.journal = references.get('_citation_journal_abbrev')[i]
                 else:
-                    if type(references.get('_citation_book_title')) != NoneType:
+                    if references.get('_citation_book_title') != None:
                         self.journal = references.get('_citation_book_title')[i]
                     else:
                         self.journal = ""
             # volume
-            if type(references.get('_citation_journal_volume')) != NoneType:
+            if references.get('_citation_journal_volume') != None:
                 self.volume = references.get('_citation_journal_volume')[i]
             else:
                 self.volume = ""
-            if type(self.volume) == NoneType:
+            if self.volume == None:
                 self.volume = ""
             # first page
-            if type(references.get('_citation_page_first')) != NoneType:
+            if references.get('_citation_page_first') != None:
                 self.firstpage = references.get('_citation_page_first')[i]
             else:
                 self.firstpage = ""
-            if type(self.firstpage) == NoneType:
+            if self.firstpage == None:
                 self.firstpage = ""
             # last page
-            if type(references.get('_citation_page_last')) != NoneType:
+            if references.get('_citation_page_last') != None:
                 self.lastpage = references.get('_citation_page_last')[i]
             else:
                 self.lastpage = ""
-            if type(self.lastpage) == NoneType:
+            if self.lastpage == None:
                 self.lastpage = ""
             # year
-            if type(references.get('_citation_year')) != NoneType:
+            if references.get('_citation_year') != None:
                 self.year = references.get('_citation_year')[i]
             else:
                 self.year = ""
-            if type(self.year) == NoneType:
+            if self.year == None:
                 self.year = ""
         except KeyError:
             try:
