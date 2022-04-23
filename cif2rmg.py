@@ -10,8 +10,6 @@ import CifFile
 import subprocess
 from utils import *
 from uctools import *
-from ESPInterfaces import *
-from elementdata import *
 
 class cifrmg_interface():
     def __init__(self):
