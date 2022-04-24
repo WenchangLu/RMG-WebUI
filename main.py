@@ -4,11 +4,12 @@ import numpy as np
 import os
 import subprocess
 from rmg_parser import *
-from add_pseudo import *
+from add_items import *
 st.title('RMG input User Interface')
 st.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center}<style>',
         unsafe_allow_html=True)
-uploaded_file = st.file_uploader("Upload a file")
+
+uploaded_file = st.file_uploader("Uploda a file")
 example_ =  st.checkbox("use an example cif file FeAs.cif", False)
 
 filetype_set = [".cif", ".xyz"]
@@ -33,12 +34,13 @@ if uploaded_file or example_:
   rmginput_str = crmg.rmginput
   #st.write(crmg.species)
   pseudolines = add_pseudo(crmg.species)
+  kpointlines = add_kpoints(crmg.cell)
 
       
 
 
 
-  rmginput_str += pseudolines
+  rmginput_str += pseudolines + kpointlines
   rmgfilename = os.path.basename(filename).split(".")[0] +".rmg"
   st.download_button(
      label="Downlowd rmg input file",
