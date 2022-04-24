@@ -46,9 +46,5 @@ if uploaded_file or example_:
      file_name = rmgfilename)
   show_rmginput = st.checkbox("show the generated rmg input file", False)
   if show_rmginput:
-    lines = rmginput_str.split("\n")
-    for line in lines:
-      st.write(line)
-  #st.markdown(rmginput_str)
-  #st.text(rmginput_str)
+    st.markdown(rmginput_str)
 

@@ -63,22 +63,22 @@ class rmg_interface():
         #
         # some default input options
         filestring += """
-description = "Short description of the input file"
-start_mode="LCAO Start"
-max_scf_steps = "100"
-rms_convergence_criterion = "1e-7"
-charge_density_mixing = "0.1"
-charge_mixing_type = "Broyden"
-length_units = "Bohr"
-atomic_coordinate_type = "Absolute"
-occupations_type = "Fermi Dirac"
-occupation_electron_temperature_eV = "0.1"
+description = "Short description of the input file"  
+start_mode="LCAO Start"   
+max_scf_steps = "100"   
+rms_convergence_criterion = "1e-7"  
+charge_density_mixing = "0.1"  
+charge_mixing_type = "Broyden"  
+length_units = "Bohr"  
+atomic_coordinate_type = "Absolute"  
+occupations_type = "Fermi Dirac"  
+occupation_electron_temperature_eV = "0.1"  
 
-write_eigvals_period = "10"
-input_wave_function_file = "Wave/wave"
-output_wave_function_file = "Wave/wave"
-kohn_sham_solver="davidson"
-calculation_mode="Quench Electrons"
+write_eigvals_period = "10"  
+input_wave_function_file = "Wave/wave"  
+output_wave_function_file = "Wave/wave"  
+kohn_sham_solver="davidson"  
+calculation_mode="Quench Electrons"  
 """
 
         ibrav = 0
@@ -119,17 +119,17 @@ calculation_mode="Quench Electrons"
             4:"Hexagonal Primitive",
             8:"Orthorhombic Primitive"
         }
-        filestring += 'bravais_lattice_type="%s"\n'%brav_type[ibrav]
+        filestring += 'bravais_lattice_type="%s"  \n'%brav_type[ibrav]
         if ibrav !=0:
-            filestring += 'a_length="%16.8f"\n'%self.cell.a
-            filestring += 'b_length="%16.8f"\n'%self.cell.b
-            filestring += 'c_length="%16.8f"\n'%self.cell.c
+            filestring += 'a_length="%16.8f"  \n'%self.cell.a
+            filestring += 'b_length="%16.8f"  \n'%self.cell.b
+            filestring += 'c_length="%16.8f"  \n'%self.cell.c
         else:
-            filestring += 'lattice_vector="\n'
+            filestring += 'lattice_vector="  \n'
             filestring += str(t)
-            filestring += '"\n'
+            filestring += '"  \n'
 
-        filestring += 'atoms="\n'
+        filestring += 'atoms="  \n'
         atom_format = "%s  %.12e %.12e %.12e"
         for a in self.cell.atomdata:
             for b in a:
@@ -137,8 +137,8 @@ calculation_mode="Quench Electrons"
                 for i in range(3):
                     t[i] = self.cell.lengthscale*t[i]
                 filestring += atom_format%(b.spcstring(),t[0], t[1], t[2])
-                filestring += "  1 1 1 0.0 0.0 0.0\n"
-        filestring += '"\n'
+                filestring += "  1 1 1 0.0 0.0 0.0  \n"
+        filestring += '"  \n'
 
         return filestring
 
