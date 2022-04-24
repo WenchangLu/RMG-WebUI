@@ -6,7 +6,7 @@ import subprocess
 from rmg_parser import *
 from add_items import *
 st.title('RMG input User Interface')
-st.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center}<style>',
+st.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: left}<style>',
         unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("Uploda a file")
@@ -31,16 +31,19 @@ elif example_:
 
 if uploaded_file or example_:
   crmg = rmg_interface(filename, filetype)
-  rmginput_str = crmg.rmginput
   #st.write(crmg.species)
-  pseudolines = add_pseudo(crmg.species)
-  kpointlines = add_kpoints(crmg.cell)
+  description = st.text_input("description", value="description of the input file")
+  rmginput_str = 'description="'+description+'"  \n'
+
+  grid_lines = add_grid(crmg.cell)
+  pseudo_lines = add_pseudo(crmg.species)
+  kpoint_lines = add_kpoints(crmg.cell)
+  ctrl_lines = add_control()
 
       
-
-
-
-  rmginput_str += pseudolines + kpointlines
+  rmginput_str += grid_lines
+  rmginput_str += ctrl_lines + kpoint_lines +pseudo_lines
+  rmginput_str += crmg.rmginput
   rmgfilename = os.path.basename(filename).split(".")[0] +".rmg"
   st.download_button(
      label="Downlowd rmg input file",
