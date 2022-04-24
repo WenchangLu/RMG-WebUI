@@ -11,9 +11,7 @@ import subprocess
 from utils import *
 from uctools import *
 
-class cifrmg_interface():
-    def __init__(self):
-        self.reducetoprim = True
+class rmg_interface():
     def cif2rmg_run(self, cif_file=None): 
         #################################################################
         # Open and read CIF file
@@ -143,3 +141,8 @@ calculation_mode="Quench Electrons"
         filestring += '"\n'
 
         return filestring
+
+    def __init__(self, filename, filetype):
+        self.reducetoprim = True
+        if filetype == ".cif":
+            self.rmginput = self.cif2rmg_run(filename)
