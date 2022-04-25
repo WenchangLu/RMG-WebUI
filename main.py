@@ -42,12 +42,14 @@ if uploaded_file or example_:
   scf_lines = add_scf()
   mixing_lines = add_mixing()
   xc_lines = add_xc()
+  qmcpack_lines = add_qmcpack()
 
       
   rmginput_str += grid_lines
   rmginput_str += scf_lines
   rmginput_str += mixing_lines
   rmginput_str += xc_lines
+  rmginput_str += qmcpack_lines
   rmginput_str += ctrl_lines
   rmginput_str += kpoint_lines
   rmginput_str += pseudo_lines

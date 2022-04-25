@@ -193,12 +193,16 @@ def add_scf():
         e_err= col1.text_input("energy convergence criterion", value="1.0e-9")
         rms_err= col2.text_input("rms convergence criterion", value="1.0e-7")
         precon_thres= col3.text_input("preconditioner threshold", value="0.0001")
+        exx_convergence_criterion = col1.text_input("Exx convergence criterion for hybrid functional", value="1.0e-9") 
+        vexx_fft_threshold = col2.text_input("Exx threshold for switch singlt to doulbe precision", value="1.0e-14")
         scf_lines = 'max_scf_steps = "'+max_scf_steps + '"  \n'
         scf_lines += 'max_md_steps = "'+max_md_steps + '"  \n'
         scf_lines += 'max_exx_steps = "'+max_md_steps + '"  \n'
         scf_lines += 'energy_convergence_criterion="' + e_err + '"  \n'
         scf_lines += 'rms_convergence_criterion = "' + rms_err +'"  \n'
         scf_lines += 'preconditioner_threshold = "' + precon_thres + '"  \n'
+        scf_lines += 'exx_convergence_criterion = "' + exx_convergence_criterion + '"  \n'
+        scf_lines += 'vexx_fft_threshold = "' + vexx_fft_threshold + '"  \n'
 
 
     return scf_lines
@@ -237,7 +241,7 @@ def add_xc():
                   "vdw-df", "VDW-DF", "hartree-fock"], 
                 help = "AUTO_XC: XC will be determined from pseudopotential")
         cs, col1, col2 = st.columns([0.1,1,1])
-        exx_mode = col1.radio("Exx mode", ["Distributed fft", "Local fft"])
+        exx_mode = col1.radio("Exx mode", ["Local fft", "Distributed fft"])
 
         exxdiv_treatment = col2.radio("Exx divergence treatment", 
                 ["gygi-baldereschi", "none"])
@@ -256,4 +260,27 @@ def add_xc():
         xc_lines += 'vdw_corr            ="' +vdw_corr +'"  \n'
         xc_lines += 'vdwdf_grid_type     ="' +vdwdf_grid +'"  \n'
     return xc_lines
+
+def add_qmcpack():
+    expand_ = st.expander("QMCPACK INTERFACE")
+    with expand_:
+        cs, col1, col2 = st.columns([0.1,1,1])
+        qmcpack = col1.checkbox("Write out file for QMCPACK")
+        qmcpack_lines = 'write_qmcpack_restart = "' + str(qmcpack) + '"  \n'
+        cs, col1, col2 = st.columns([0.1,1,1])
+        if qmcpack:
+            exx_integrals_filepath = col1.text_input("file name for afqmc", value="afqmc_rmg")
+            ExxIntCholosky = col1.checkbox("Cholesky factorization for Vexx", True)
+            ExxCholMax = col2.text_input("maximum Cholesky vectors", value="8")
+            exx_int_flag = col2.checkbox("Calculate Exack exchange integrals", True)
+            qmc_nband = col1.text_input("number of bands for qmcpack", value="0", 
+                    help="default value 0: use the number of states")
+
+            qmcpack_lines +='exx_integrals_filepath = "' + exx_integrals_filepath +'"  \n'
+            qmcpack_lines +='ExxIntCholosky = "' + str(ExxIntCholosky) +'"  \n'
+            qmcpack_lines +='ExxCholMax = "' +  ExxCholMax + '"  \n'
+            qmcpack_lines +='exx_int_flag = "' +  str(exx_int_flag) +'"  \n'
+            qmcpack_lines +='qmc_nband = "' + qmc_nband +'"  \n'
+    return qmcpack_lines
+
 
