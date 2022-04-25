@@ -57,10 +57,29 @@ def add_kpoint_mesh(cell):
 
           
 
+def add_kpoint_text():
+    cs, col1 = st.columns([0.2,1])
+    kp_list_str=col1.text_area("K point list in unit of reciprocal lattice vectors and its weight")
+    kp_list = kp_list_str.split("\n")
+    kpoints = ""
+    for kp in kp_list:
+        if(len(kp.split()) ==4):
+            kpoints += kp + '  \n'
+    kpointlines = 'kpoints = "  \n'
+    kpointlines += kpoints
+    kpointlines += '"  \n'
+    col1.markdown(kpointlines)
+    return kpointlines
+
+
 def add_kpoints(cell):
     expand_ = st.expander("K POINTS")
     with expand_:
-        kpointlines = add_kpoint_mesh(cell)
+        kp_method = st.radio("use mesh or text input", ["use mesh", "text input"])
+        if kp_method == "use mesh":
+            kpointlines = add_kpoint_mesh(cell)
+        else:
+            kpointlines = add_kpoint_text()
     return kpointlines
 def add_control():
     expand_ = st.expander("CONTROL OPTIONS")
