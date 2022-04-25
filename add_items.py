@@ -91,10 +91,6 @@ def add_control():
                 ["auto", "lapack", "scalapack", "magma", 
                  "cusolver", "elpa", "rocsolver"])
 
-        vdw_corr = st.radio("van der Waals correction", 
-                ["None", "DFT-D2", "Grimme-D2","DFT-D3"])
-        vdwdf_grid = st.radio("grid for vdw corr",
-                ["Coarse", "Fine"])
         relax_mass = st.radio("mass for atoms", ["Atomic", "Equal"], 
                 help="equal mas for fast relax may help in some cases")
         dos_method = st.radio("density of state calc", 
@@ -118,8 +114,6 @@ def add_control():
         ctrl_lines += 'calculation_mode    ="' +calculation_mode +'"  \n'
         ctrl_lines += 'kohn_sham_solver    ="' +kohn_sham_solver +'"  \n'
         ctrl_lines += 'subdiag_driver      ="' +subdiag_driver +'"  \n'
-        ctrl_lines += 'vdw_corr            ="' +vdw_corr +'"  \n'
-        ctrl_lines += 'vdwdf_grid          ="' +vdwdf_grid +'"  \n'
         ctrl_lines += 'relax_mass          ="' +relax_mass +'"  \n'
         ctrl_lines += 'dos_method          ="' +dos_method +'"  \n'
         ctrl_lines += 'occupations_type    ="' +occupations_type +'"  \n'
@@ -214,4 +208,33 @@ def add_mixing():
             pulay_gspace = col1.checkbox("Pulay mixing in G space", False)
             mixing_lines += 'charge_pulay_Gspace = "' + str(pulay_gspace)+ '"  \n'
     return mixing_lines
+
+def add_xc():
+    expand_ = st.expander("EXCHANGE CORRELATION POTENTIAL")
+    with expand_:
+        xc_type = st.radio("exchange correlation type", 
+                ["AUTO_XC", "LDA", "GGA XB CP", "PW91", "GGA BLYP", "GGA PBE",
+                  "REVPBE", "PW86PBE", "PBESOL", "PBE0", "HSE", "B3LYP", "gaupbe", 
+                  "vdw-df", "VDW-DF", "hartree-fock"], 
+                help = "AUTO_XC: XC will be determined from pseudopotential")
+        cs, col1, col2 = st.columns([0.1,1,1])
+        exx_mode = col1.radio("Exx mode", ["Distributed fft", "Local fft"])
+
+        exxdiv_treatment = col2.radio("Exx divergence treatment", 
+                ["gygi-baldereschi", "none"])
+        x_gamma_extrapolation = col1.checkbox("x_gamma_extrapolation", True)
+        exx_fracton = col2.text_input("the fraction of Exx for hybrid functional", value="-1.0", 
+                help="negative value: the fraction determined by code for different hybrid functionals")
+        vdw_corr = col1.radio("empirical van der Waals correction", 
+                ["None", "DFT-D2", "Grimme-D2","DFT-D3"])
+        vdwdf_grid = col2.radio("grid for vdw corr",
+                ["Coarse", "Fine"])
+        xc_lines  = 'exchange_correlaton_type="'+xc_type +'"  \n'
+        xc_lines += 'exx_mode = "' + exx_mode + '"  \n'
+        xc_lines += 'exxdiv_treatment = "' + exxdiv_treatment +'"  \n'
+        xc_lines += 'x_gamma_extrapolation ="' + str(x_gamma_extrapolation) +'"  \n'
+        xc_lines += 'exx_fracton = "' + exx_fracton +'"  \n'
+        xc_lines += 'vdw_corr            ="' +vdw_corr +'"  \n'
+        xc_lines += 'vdwdf_grid_type     ="' +vdwdf_grid +'"  \n'
+    return xc_lines
 
