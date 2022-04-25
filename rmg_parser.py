@@ -12,7 +12,7 @@ from utils import *
 from uctools import *
 
 class rmg_interface():
-    def cif2rmg_run(self, cif_file=None): 
+    def cif2cell(self, cif_file=None): 
         #################################################################
         # Open and read CIF file
         if cif_file:
@@ -46,31 +46,8 @@ class rmg_interface():
 
         self.cell = cd
 
-        # set up species list
-        tmp = set([])
-        for a in self.cell.atomdata:
-            for b in a:
-                tmp.add(b.spcstring())
-        self.species = list(tmp)
 
-        filestring = ""
-        # Set current units and stuff
-        # Determine max width of spcstring
-        width = 0
-        for a in self.cell.atomdata:
-            for b in a:
-                width = max(width, len(b.spcstring()))
-        #
-        # some default input options
-        filestring += """
-atomic_coordinate_type = "Absolute"  
-write_eigvals_period = "10"  
-input_wave_function_file = "Wave/wave"  
-output_wave_function_file = "Wave/wave"  
-"""
-
-        ibrav = 0
-        self.cell.newunit("bohr")
+        self.ibrav = 0
         t = LatticeMatrix(self.cell.latticevectors)
         for i in range(3):
             for j in range(3):
@@ -79,26 +56,43 @@ output_wave_function_file = "Wave/wave"
         ortho = ortho and abs(self.cell.b - t[1][1]) < 1.0e-5
         ortho = ortho and abs(self.cell.c - t[2][2]) < 1.0e-5
 
-        if ortho: ibrav = 8
+        if ortho: self.ibrav = 8
         system = self.cell.crystal_system()
         setting = self.cell.spacegroupsetting
         if system == 'cubic':
             if self.cell.primcell:
                 if setting == 'P':
-                    ibrav = 1
+                    self.ibrav = 1
                 elif setting == 'F':
-                    ibrav = 2
+                    self.ibrav = 2
                 elif setting == 'I':
-                    ibrav = 3
+                    self.ibrav = 3
             else:
-                ibrav = 1
+                self.ibrav = 1
         if system == 'hexagonal':
             if self.cell.primcell:
                 if setting == 'P':
-                    ibrav = 4
+                    self.ibrav = 4
             #elif setting == 'R':
             #    return 5
 
+    def cell2rmg(self):
+        self.cell.newunit("bohr")
+        # set up species list
+        tmp = set([])
+        for a in self.cell.atomdata:
+            for b in a:
+                tmp.add(b.spcstring())
+        self.species = list(tmp)
+        filestring = ""
+        #
+        # some default input options
+        filestring += """
+atomic_coordinate_type = "Absolute"  
+write_eigvals_period = "10"  
+input_wave_function_file = "Wave/wave"  
+output_wave_function_file = "Wave/wave"  
+"""
         brav_type = {
             0:"None",
             1:"Cubic Primitive",
@@ -107,8 +101,8 @@ output_wave_function_file = "Wave/wave"
             4:"Hexagonal Primitive",
             8:"Orthorhombic Primitive"
         }
-        filestring += 'bravais_lattice_type="%s"  \n'%brav_type[ibrav]
-        if ibrav !=0:
+        filestring += 'bravais_lattice_type="%s"  \n'%brav_type[self.ibrav]
+        if self.ibrav !=0:
             filestring += 'a_length="%16.8f"  \n'%self.cell.a
             filestring += 'b_length="%16.8f"  \n'%self.cell.b
             filestring += 'c_length="%16.8f"  \n'%self.cell.c
@@ -133,4 +127,6 @@ output_wave_function_file = "Wave/wave"
     def __init__(self, filename, filetype):
         self.reducetoprim = True
         if filetype == ".cif":
-            self.rmginput = self.cif2rmg_run(filename)
+            self.cif2cell(filename)
+
+        self.rmginput = self.cell2rmg()
