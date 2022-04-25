@@ -63,13 +63,7 @@ class rmg_interface():
         #
         # some default input options
         filestring += """
-max_scf_steps = "100"   
-rms_convergence_criterion = "1e-7"  
-charge_density_mixing = "0.1"  
-charge_mixing_type = "Broyden"  
-length_units = "Bohr"  
 atomic_coordinate_type = "Absolute"  
-
 write_eigvals_period = "10"  
 input_wave_function_file = "Wave/wave"  
 output_wave_function_file = "Wave/wave"  

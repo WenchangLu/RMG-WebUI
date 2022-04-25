@@ -39,10 +39,16 @@ if uploaded_file or example_:
   pseudo_lines = add_pseudo(crmg.species)
   kpoint_lines = add_kpoints(crmg.cell)
   ctrl_lines = add_control()
+  scf_lines = add_scf()
+  mixing_lines = add_mixing()
 
       
   rmginput_str += grid_lines
-  rmginput_str += ctrl_lines + kpoint_lines +pseudo_lines
+  rmginput_str += scf_lines
+  rmginput_str += mixing_lines
+  rmginput_str += ctrl_lines
+  rmginput_str += kpoint_lines
+  rmginput_str += pseudo_lines
   rmginput_str += crmg.rmginput
   rmgfilename = os.path.basename(filename).split(".")[0] +".rmg"
   st.download_button(

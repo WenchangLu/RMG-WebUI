@@ -49,12 +49,16 @@ def add_kpoint_mesh(cell):
         kshift_str = st.text_input("kpoint shift", value="0 0 0", help="0 0 0 including Gamma point")
     kpointlines = 'kpoint_mesh="' + kmesh_str +'"  \n'    
     kpointlines += 'kpoint_shift="' + kshift_str +'"  \n'    
+    with col2:
+        kdist = st.text_input("kpoints distribution", value="1", 
+                help =" control the parallel over kpoints")
+    kpointlines +='kpoint_distribution = "' + kdist +'"  \n'    
     return kpointlines
 
           
 
 def add_kpoints(cell):
-    expand_ = st.expander("CHOOSE K POINTS")
+    expand_ = st.expander("K POINTS")
     with expand_:
         kpointlines = add_kpoint_mesh(cell)
     return kpointlines
@@ -126,7 +130,7 @@ def add_control():
         return ctrl_lines
 
 def add_grid(cell):
-    expand_ = st.expander("CHOOSE REAL SPACE GRID")
+    expand_ = st.expander("REAL SPACE GRID")
     with expand_:
         cs, col1, col2, col3 = st.columns([0.1,1,2,1])
         grid_spacing_str = col1.text_input("grid spacing(bohr)", value="0.35",
@@ -166,3 +170,48 @@ def add_grid(cell):
         grid_lines += 'potential_grid_refinement="'+pot_grid+'"  \n'
 
     return grid_lines
+def add_scf():
+    expand_ = st.expander("SCF & CONVERGENCE CONTROL")
+    with expand_:
+        cs, col1, col2, col3 = st.columns([0.1,1,1,1])
+        max_scf_steps= col1.text_input("max scf steps", value="40")
+        max_md_steps= col2.text_input("max md or relax steps", value="10")
+        max_exx_steps= col3.text_input("max Exx steps for hybrid or HF", value="20")
+        e_err= col1.text_input("energy convergence criterion", value="1.0e-9")
+        rms_err= col2.text_input("rms convergence criterion", value="1.0e-7")
+        precon_thres= col3.text_input("preconditioner threshold", value="0.0001")
+        scf_lines = 'max_scf_steps = "'+max_scf_steps + '"  \n'
+        scf_lines += 'max_md_steps = "'+max_md_steps + '"  \n'
+        scf_lines += 'max_exx_steps = "'+max_md_steps + '"  \n'
+        scf_lines += 'energy_convergence_criterion="' + e_err + '"  \n'
+        scf_lines += 'rms_convergence_criterion = "' + rms_err +'"  \n'
+        scf_lines += 'preconditioner_threshold = "' + precon_thres + '"  \n'
+
+
+    return scf_lines
+
+
+def add_mixing():
+    expand_ = st.expander("MIXING OPTIONS")
+    with expand_:
+        charge_mixing_type = st.radio("charge density mixing type", 
+                ["Broyden", "Pulay", "linear"])
+        cs, col1, col2, col3 = st.columns([0.1,1,1,1])
+        mix = col1.text_input("charge density mixing parameter",value="0.5") 
+        mix_scale = col2.text_input("charge density mixing scale",value="0.5") 
+        mix_order = col1.text_input("Broyden or Pulay order", value="5")
+        refresh_step = col2.text_input("Broyden or Pulay refresh step", value="100")
+        mixing_lines  = 'charge_mixing_type = "'+ charge_mixing_type +'"  \n'
+        mixing_lines += 'charge_density_mixing ="' + mix +'"  \n'
+        if charge_mixing_type == "Broyden":
+            mixing_lines += 'charge_broyden_order = "' + mix_order + '"  \n'
+            mixing_lines += 'charge_broyden_scale = "' +mix_scale + '"  \n'
+            mixing_lines += 'charge_broyden_refresh = "' +refresh_step + '"  \n'
+        elif charge_mixing_type == "Pulay":
+            mixing_lines += 'charge_pulay_order = "' + mix_order + '"  \n'
+            mixing_lines += 'charge_pulay_scale = "' +mix_scale + '"  \n'
+            mixing_lines += 'charge_pulay_refresh = "' +refresh_step + '"  \n'
+            pulay_gspace = col1.checkbox("Pulay mixing in G space", False)
+            mixing_lines += 'charge_pulay_Gspace = "' + str(pulay_gspace)+ '"  \n'
+    return mixing_lines
+
