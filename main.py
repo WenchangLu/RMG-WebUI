@@ -16,7 +16,7 @@ cif_or_xyz = "None"
 if example_:
     cif_or_xyz = col2.radio("choose cif or xyz", ["None", "cif", "xyz"])
 
-filetype_set = [".cif", ".xyz"]
+filetype_supported = ["cif", "xyz"]
 filetype =""
 if uploaded_file:
     if not os.path.isdir("tempDir"):
@@ -24,22 +24,24 @@ if uploaded_file:
     with open(os.path.join("tempDir", uploaded_file.name), "wb") as f:
         f.write(uploaded_file.getbuffer())
     filename = "tempDir/"+uploaded_file.name
-    name_split = os.path.splitext(filename)
+    name_split = filename.split(".")
     if len(name_split) >1: filext = name_split[len(name_split)-1]
-    if filext in filetype_set: 
+    if filext in filetype_supported: 
         filetype = filext
     else:
-        filetype = st.text_input("filetype")
+        filetype = st.radio("filetype", ["None", "xyz","more is coming"])
 elif cif_or_xyz == "cif":
     filename = "cifs/FeAs.cif"  
-    filetype = ".cif"
+    filetype = "cif"
 elif  cif_or_xyz == "xyz":
     filename = "xyz_files/C60.xyz"  
-    filetype = ".xyz"
+    filetype = "xyz"
 else:
     st.markdown("upload a file or choose an example")
 
-if filetype !="":
+if not (filetype in filetype_supported):
+    st.markdown(filetype +  " filetype not programed")
+else:
   #st.write(crmg.species)
   description = st.text_input("description", value="description of the input file")
   rmginput_str = 'description="'+description+'"  \n'

@@ -183,11 +183,9 @@ output_wave_function_file = "Wave/wave"
 
     def __init__(self, filename, filetype):
         self.reducetoprim = True
-        if filetype == ".cif":
+        if filetype == "cif":
             self.cif2cell(filename)
-        elif filetype == ".xyz":
+        elif filetype == "xyz":
             self.xyz2cell(filename)
-        else:
-            st.markdown(filetype + " filetpye not programed")
 
         self.rmginput = self.cell2rmg()

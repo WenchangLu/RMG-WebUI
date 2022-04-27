@@ -32,8 +32,7 @@ def add_pseudo(species):
 def add_kpoint_mesh(cell):
     cs, col1, col2, col3 = st.columns([0.2,1,1,1])
     with col1:
-        k_delta_str = st.text_input("kdelta(2PI/bohr)", value="0.2", help ="use kdelta to estimate kmesh")
-    k_delta = float(k_delta_str)
+        k_delta = st.number_input("kdelta(2PI/bohr)", value=0.2, help ="use kdelta to estimate kmesh")
     recip_lat= cell.reciprocal_latticevectors()
     for i in range(3):
         for j in range(3):
@@ -146,9 +145,8 @@ def add_grid(cell):
     expand_ = st.expander("REAL SPACE GRID")
     with expand_:
         cs, col1, col2, col3 = st.columns([0.1,1,2,1])
-        grid_spacing_str = col1.text_input("grid spacing(bohr)", value="0.35",
+        grid_spacing = col1.number_input("grid spacing(bohr)", value=0.35,
                     help ="use grid spacing to determine the real space grid")
-        grid_spacing = float(grid_spacing_str)
         nx = int(round(cell.a/grid_spacing))
         ny = int(round(cell.b/grid_spacing))
         nz = int(round(cell.c/grid_spacing))
