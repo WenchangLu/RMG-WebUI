@@ -74,8 +74,11 @@ def add_kpoint_text():
 def add_kpoints(cell):
     expand_ = st.expander("K POINTS")
     with expand_:
-        kp_method = st.radio("use mesh or text input", ["use mesh", "text input"])
-        if kp_method == "use mesh":
+        kp_method = st.radio("use gamma point, a mesh or text input", ["gamma", "use mesh", "text input"])
+        if kp_method == "gamma":
+            kpointlines = 'kpoint_mesh = "1 1 1"  \n'
+            kpointlines += 'kpoint_shift = "0 0 0"  \n'
+        elif kp_method == "use mesh":
             kpointlines = add_kpoint_mesh(cell)
         else:
             kpointlines = add_kpoint_text()
