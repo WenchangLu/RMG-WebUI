@@ -96,7 +96,7 @@ def add_control():
                    "Start TDDFT", "Restart TDDFT",
                     "Modified LCAO Start"])
         calculation_mode= st.radio("calculation mode", 
-                ["Quench Electron  ", 
+                ["Quench Electrons  ", 
                     "Relax Structure  ", 
                     "Constant Volume And Energy  ",
                     "Constant Temperature And Energy   ",
@@ -154,6 +154,8 @@ def add_grid(cell):
         cs, col1, col2, col3 = st.columns([0.1,1,2,1])
         grid_spacing = col1.number_input("grid spacing(bohr)", value=0.35,
                     help ="use grid spacing to determine the real space grid")
+        if cell.unit == "angstrom" :
+            grid_spacing = grid_spacing * 0.529177
         nx = int(round(cell.a/grid_spacing))
         ny = int(round(cell.b/grid_spacing))
         nz = int(round(cell.c/grid_spacing))
@@ -179,7 +181,7 @@ def add_grid(cell):
         hx = cell.a/int(grids_str.split()[0])
         hy = cell.b/int(grids_str.split()[1])
         hz = cell.c/int(grids_str.split()[2])
-        st.markdown("final grid spacing: hx =%f hy=%f hz=%f"%(hx,hy,hz))
+        st.markdown("final grid spacing: hx =%f hy=%f hz=%f "%(hx,hy,hz) + cell.unit)
         anisotropy = max(hx,hy,hz)/min(hx,hy,hz)
         st.markdown("grid anisotropy =%f"%anisotropy)
         if(anisotropy >=1.1):
