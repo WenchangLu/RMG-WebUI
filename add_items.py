@@ -61,20 +61,24 @@ def add_kpoint_text():
     kp_list_str=col1.text_area("K point list in unit of reciprocal lattice vectors and its weight")
     kp_list = kp_list_str.split("\n")
     kpoints = ""
+    num_kpt = 0
     for kp in kp_list:
         if(len(kp.split()) ==4):
+            num_kpt+=1
             kpoints += kp + '  \n'
     kpointlines = 'kpoints = "  \n'
     kpointlines += kpoints
     kpointlines += '"  \n'
     col1.markdown(kpointlines)
+    if num_kpt == 0:
+        st.markdown("kpoint list need to be kx, ky, kz, weight, 4 numbers in a row")
     return kpointlines
 
 
 def add_kpoints(cell):
     expand_ = st.expander("K POINTS")
     with expand_:
-        kp_method = st.radio("use gamma point, a mesh or text input", ["gamma", "use mesh", "text input"])
+        kp_method = st.radio("use gamma point, a mesh or a list", ["gamma", "use mesh", "use list"])
         if kp_method == "gamma":
             kpointlines = 'kpoint_mesh = "1 1 1"  \n'
             kpointlines += 'kpoint_shift = "0 0 0"  \n'
