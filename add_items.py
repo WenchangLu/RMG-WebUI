@@ -175,10 +175,12 @@ def add_grid(cell):
         st.markdown("final grid spacing: hx =%f hy=%f hz=%f"%(hx,hy,hz))
         anisotropy = max(hx,hy,hz)/min(hx,hy,hz)
         st.markdown("grid anisotropy =%f"%anisotropy)
-        pot_grid= col3.text_input("rho pot grid refinement", value="2")
+        if(anisotropy >=1.1):
+            st.markdown('<p style="color:red;">WARNGING: too big grid anisotropy, need to be <1.1 rmg wont run</p>', unsafe_allow_html=True)
+        pot_grid= col3.number_input("rho pot grid refinement", value=2)
 
         grid_lines = 'wavefunction_grid="'+grids_str+'"  \n'
-        grid_lines += 'potential_grid_refinement="'+pot_grid+'"  \n'
+        grid_lines += 'potential_grid_refinement="%d"  \n'%pot_grid
 
     return grid_lines
 def add_scf():
@@ -294,10 +296,10 @@ def add_lattice(bounding_box):
     with expand_:
         cs, col1 = st.columns([0.1,1])
         ibrav_str = st.radio("Bravais lattice type", 
-                ["None", "Simple Cubic", "FCC", "BCC", "Orthorhombic", "Hexagonal"],
-                help = "choose None for others")
+                ["Orthorhombic", "Simple Cubic", "FCC", "BCC", "Hexagonal", "do not know"],
+                help = "choose do not know for others")
         cs, col1,col2, col3 = st.columns([0.1,1,1,1])
-        if ibrav_str == "None":
+        if ibrav_str == "do not know":
             ibrav = 0
             lattvec_str = col1.text_area("lattice vector in Angstrom", 
                     help = " must be 3x3 numbers")
