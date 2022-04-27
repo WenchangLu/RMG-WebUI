@@ -292,8 +292,12 @@ def add_lattice(bounding_box):
     b = bounding_box[3] - bounding_box[2] +5.0
     c = bounding_box[5] - bounding_box[4] +5.0
     lattvec = [[a,0.0,0.0],[0.0,b,0.0],[0.0,0.0,c]]
+
     ibrav = 0
     with expand_:
+        st.markdown("min_x = %f, max_x = %f"%(bounding_box[0], bounding_box[1]))
+        st.markdown("min_y = %f, max_x = %f"%(bounding_box[2], bounding_box[3]))
+        st.markdown("min_z = %f, max_z = %f"%(bounding_box[4], bounding_box[5]))
         cs, col1 = st.columns([0.1,1])
         ibrav_str = st.radio("Bravais lattice type", 
                 ["Orthorhombic", "Simple Cubic", "FCC", "BCC", "Hexagonal", "do not know"],
