@@ -284,3 +284,54 @@ def add_qmcpack():
     return qmcpack_lines
 
 
+def add_lattice(bounding_box):
+    expand_ = st.expander("LATTICE INFO in unit of Anstrom")
+    lattvec = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+    #estimate the a, b, c = bounding box + 5 Angstrom
+    a = bounding_box[1] - bounding_box[0] +5.0
+    b = bounding_box[3] - bounding_box[2] +5.0
+    c = bounding_box[5] - bounding_box[4] +5.0
+    lattvec = [[a,0.0,0.0],[0.0,b,0.0],[0.0,0.0,c]]
+    ibrav = 0
+    with expand_:
+        cs, col1 = st.columns([0.1,1])
+        ibrav_str = st.radio("Bravais lattice type", 
+                ["None", "Simple Cubic", "FCC", "BCC", "Orthorhombic", "Hexagonal"],
+                help = "choose None for others")
+        cs, col1,col2, col3 = st.columns([0.1,1,1,1])
+        if ibrav_str == "None":
+            ibrav = 0
+            lattvec_str = col1.text_area("lattice vector in Angstrom", 
+                    help = " must be 3x3 numbers")
+            mat = lattvec_str.split("\n")
+            if len(mat) == 3:
+                for i in range(3):
+                    vec = mat[i].split()
+                    for j in range(3):
+                        lattvec[i][j] = float(vec[j])
+        elif ibrav_str == "Simple Cubic":
+            ibrav = 1
+            a = col1.number_input("length a", value=a)
+            b = a
+            c = a
+        elif ibrav_str == "FCC":
+            ibrav = 2
+            a = col1.number_input("length a", value=a)
+            b = a
+            c = a
+        elif ibrav_str =="BCC":       
+            ibrav = 3
+            a = col1.number_input("length a", value=a)
+            b = a
+            c = a
+        elif ibrav_str == "Orthorhombic": 
+            ibrav = 8
+            a = col1.number_input("length a", value=a)
+            b = col2.number_input("length b", value=b)
+            c = col3.number_input("length c", value=c)
+        elif ibrav_str == "Hexagonal":
+            ibrav = 4
+            a = col1.number_input("length a", value=a)
+            b = a
+            c = col3.number_input("length c", value=c)
+    return (ibrav, a,b,c, lattvec)            

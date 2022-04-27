@@ -10,31 +10,41 @@ st.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content
         unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("Uploda a file")
-example_ =  st.checkbox("use an example cif file FeAs.cif", False)
+col1, col2 = st.columns(2)
+example_ =  col1.checkbox("use an example ", False)
+cif_or_xyz = "None"
+if example_:
+    cif_or_xyz = col2.radio("choose cif or xyz", ["None", "cif", "xyz"])
 
 filetype_set = [".cif", ".xyz"]
+filetype =""
 if uploaded_file:
-  if not os.path.isdir("tempDir"):
-    os.mkdir("tempDir")
-  with open(os.path.join("tempDir", uploaded_file.name), "wb") as f:
-    f.write(uploaded_file.getbuffer())
-  filename = "tempDir/"+uploaded_file.name
-  name_split = os.path.splitext(filename)
-  if len(name_split) >1: filext = name_split[len(name_split)-1]
-  if filext in filetype_set: 
-      filetype = filext
-  else:
-      filetype = st.text_input("filetype")
-elif example_:
-  filename = "cifs/FeAs.cif"  
-  filetype = ".cif"
+    if not os.path.isdir("tempDir"):
+        os.mkdir("tempDir")
+    with open(os.path.join("tempDir", uploaded_file.name), "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    filename = "tempDir/"+uploaded_file.name
+    name_split = os.path.splitext(filename)
+    if len(name_split) >1: filext = name_split[len(name_split)-1]
+    if filext in filetype_set: 
+        filetype = filext
+    else:
+        filetype = st.text_input("filetype")
+elif cif_or_xyz == "cif":
+    filename = "cifs/FeAs.cif"  
+    filetype = ".cif"
+elif  cif_or_xyz == "xyz":
+    filename = "xyz_files/C60.xyz"  
+    filetype = ".xyz"
+else:
+    st.markdown("upload a file or choose an example")
 
-if uploaded_file or example_:
-  crmg = rmg_interface(filename, filetype)
+if filetype !="":
   #st.write(crmg.species)
   description = st.text_input("description", value="description of the input file")
   rmginput_str = 'description="'+description+'"  \n'
 
+  crmg = rmg_interface(filename, filetype)
   grid_lines = add_grid(crmg.cell)
   pseudo_lines = add_pseudo(crmg.species)
   kpoint_lines = add_kpoints(crmg.cell)
