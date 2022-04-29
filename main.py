@@ -16,7 +16,7 @@ cif_or_xyz = "None"
 if example_:
     cif_or_xyz = col2.radio("choose cif or xyz", ["None", "cif", "xyz"])
 
-filetype_supported = ["cif", "xyz"]
+filetype_supported = ["cif", "xyz", "vasp"]
 filetype =""
 if uploaded_file:
     if not os.path.isdir("tempDir"):
@@ -25,11 +25,12 @@ if uploaded_file:
         f.write(uploaded_file.getbuffer())
     filename = "tempDir/"+uploaded_file.name
     name_split = filename.split(".")
+    filext = ""
     if len(name_split) >1: filext = name_split[len(name_split)-1]
     if filext in filetype_supported: 
         filetype = filext
     else:
-        filetype = st.radio("filetype", ["None", "xyz","more is coming"])
+        filetype = st.radio("filetype", ["None", "cif", "xyz", "vasp", "more is coming"])
 elif cif_or_xyz == "cif":
     filename = "cifs/FeAs.cif"  
     filetype = "cif"

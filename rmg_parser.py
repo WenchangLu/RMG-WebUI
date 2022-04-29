@@ -14,14 +14,66 @@ from uctools import *
 from add_items import *
 
 class rmg_interface():
+    def vasp2cell(self, POSCAR=None):
+        with open(POSCAR, "r") as f:
+            all_lines = f.readlines()
+        self.cell = CellData()
+        self.cell.unit = "angstrom"
+        self.cell.lengthscale = float(all_lines[1])   #alat
+        self.ibrav = 0
+        self.cell.latticevectors = []
+        #  lines 3,4,5 are lattice vectors
+        celldm= [] 
+        for i in range(3):
+            vec = all_lines[i+2].split()
+            a0 = float(vec[0]) 
+            a1 = float(vec[1]) 
+            a2 = float(vec[2]) 
+            self.cell.latticevectors.append([a0,a1,a2])
+            celldm.append(sqrt(a0*a0+a1*a1+a2*a2))
+        self.cell.a = celldm[0] * self.cell.lengthscale
+        self.cell.b = celldm[1] * self.cell.lengthscale
+        self.cell.c = celldm[2] * self.cell.lengthscale
+
+        species_list = all_lines[5].split()
+        num_atoms_spec =[int(a) for a in all_lines[6].split()]
+        first_char = all_lines[7].strip()[0]
+        self.atom_unit = ""
+        atom_start_line = 8
+        if first_char == "C" or first_char == "c":
+            self.atom_unit = "Absolute"
+        elif first_char == "D" or first_char == "d":
+            self.atom_unit = "Cell Relative"
+        else:
+            first_char = all_lines[8].strip()[0]
+            atom_start_line = 9
+            if first_char == "C" or first_char == "c":
+                self.atom_unit = "Absolute"
+            elif first_char == "D" or first_char == "d":
+                self.atom_unit = "Cell Relative"
+            else:
+                st.markdown("Error in POSCAR file")
+        if self.atom_unit == "Absolute":
+            scale = self.cell.lengthscale
+        else:
+            scale = 1.0
+        self.atoms = []
+        atom_line = atom_start_line -1    
+        for isp in range(len(num_atoms_spec)):
+            natom_per_sp = num_atoms_spec[isp]
+            for n in range(natom_per_sp):
+                atom_line += 1
+                coor_str = all_lines[atom_line].split()
+                self.atoms.append([species_list[isp], float(coor_str[0]) * scale, float(coor_str[1]) * scale, float(coor_str[2]) * scale]) 
+
+
+
     def xyz2cell(self, xyz_file=None): 
         #################################################################
         # Open and read xyz file
-        if not os.path.exists(xyz_file):
-            sys.stderr.write("***Error: The file "+xyz_file+" could not be found.\n")
-            sys.exit(2)
         self.cell = CellData()
         self.cell.unit = "angstrom"
+        self.atom_unit = "Absolute"
         self.cell.lengthscale = 1.0
 
         with open(xyz_file, "r") as f:
@@ -57,11 +109,9 @@ class rmg_interface():
     def cif2cell(self, cif_file=None): 
         #################################################################
         # Open and read CIF file
-        if not os.path.exists(cif_file):
-            sys.stderr.write("***Error: The file "+cif_file+" could not be found.\n")
-            sys.exit(2)
         cf = CifFile.ReadCif(cif_file)
 
+        self.atom_unit = "Absolute"
         ##############################################
         # Get blocks
         cfkeys = list(cf.keys())
@@ -134,12 +184,6 @@ class rmg_interface():
         filestring = ""
         #
         # some default input options
-        filestring += """
-atomic_coordinate_type = "Absolute"  
-write_eigvals_period = "10"  
-input_wave_function_file = "Wave/wave"  
-output_wave_function_file = "Wave/wave"  
-"""
         brav_type = {
             0:"None",
             1:"Cubic Primitive",
@@ -172,6 +216,7 @@ output_wave_function_file = "Wave/wave"
                 filestring += '  \n'    
             filestring += '"  \n'
 
+        filestring += 'atomic_coordinate_type = "%s"  \n'%self.atom_unit 
         filestring += 'atoms="  \n'
         atom_format = "%s  %.12e %.12e %.12e"
         for a in self.atoms:
@@ -183,9 +228,14 @@ output_wave_function_file = "Wave/wave"
 
     def __init__(self, filename, filetype):
         self.reducetoprim = True
+        if not os.path.exists(filename):
+            sys.stderr.write("***Error: The file "+filename+" could not be found.\n")
+            sys.exit(2)
         if filetype == "cif":
             self.cif2cell(filename)
         elif filetype == "xyz":
             self.xyz2cell(filename)
+        elif filetype == "vasp":
+            self.vasp2cell(filename)
 
         self.rmginput = self.cell2rmg()

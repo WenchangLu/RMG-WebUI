@@ -352,6 +352,9 @@ def add_lattice(bounding_box):
                     vec = mat[i].split()
                     for j in range(3):
                         lattvec[i][j] = float(vec[j])
+            a = sqrt(lattvec[0][0] *lattvec[0][0] +lattvec[0][1] *lattvec[0][1] +lattvec[0][2] *lattvec[0][2] )
+            b = sqrt(lattvec[1][0] *lattvec[1][0] +lattvec[1][1] *lattvec[1][1] +lattvec[1][2] *lattvec[1][2] )
+            c = sqrt(lattvec[2][0] *lattvec[2][0] +lattvec[2][1] *lattvec[2][1] +lattvec[2][2] *lattvec[2][2] )
         elif ibrav_str == "Simple Cubic":
             ibrav = 1
             a = col1.number_input("length a", value=a)
