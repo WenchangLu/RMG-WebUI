@@ -1,34 +1,53 @@
 
 import streamlit as st
 def add_pseudo(species):  
-  expand_ = st.expander("PSEUDOPOTENTIAL")
-  with expand_:
-      st.subheader('Pseudopotentials')
-      cstart, col1 = st.columns([0.1,1])
-      pseudo_dict={}
-      with col1:
-          pp_oncv = st.checkbox("ONCV: build-in normal conserving Haman pseudopotentials", True)
-          pp_gbrv = st.checkbox("GBRV: build-in ultra-soft pseudopotentials", False) 
-            
-          pseudolines = ""  
-          if pp_oncv:
-              pseudolines = 'internal_pseudo_type = "nc_accuracy"  \n'
-          if pp_gbrv:
-              pseudolines = 'internal_pseudo_type = "ultrasoft"  \n'
-          select_pp = st.checkbox("select pseudopotentials files by yourself", False)
+    expand_ = st.expander("PSEUDOPOTENTIAL")
+    with expand_:
+        st.subheader('Pseudopotentials')
+        cstart, col1 = st.columns([0.1,1])
+        pseudo_dict={}
+        with col1:
+            pp_oncv = st.checkbox("ONCV: build-in normal conserving Haman pseudopotentials", True)
+            pp_gbrv = st.checkbox("GBRV: build-in ultra-soft pseudopotentials", False) 
+              
+            pseudolines = ""  
+            if pp_oncv:
+                pseudolines = 'internal_pseudo_type = "nc_accuracy"  \n'
+            if pp_gbrv:
+                pseudolines = 'internal_pseudo_type = "ultrasoft"  \n'
+            select_pp = st.checkbox("select pseudopotentials files by yourself", False)
 
-      cstart, col1 = st.columns([0.2,1])
-      with col1:
-          if select_pp:
-             pseudo_dir = st.text_input("pseudopotential file directory", value="./", on_change=None)
-             pseudolines = 'pseudo_dir = "' + pseudo_dir + '"  \n'
-             pseudolines += 'pseudopotential = "  \n' 
-             for sp in species:
-                 pseudo_dict[sp] = st.text_input(sp+":", value=sp+".UPF", on_change=None)
-                 pseudolines += sp + '   ' + pseudo_dict[sp] +'  \n'
+        cstart, col1 = st.columns([0.2,1])
+        with col1:
+            if select_pp:
+               pseudo_dir = st.text_input("pseudopotential file directory", value="./", on_change=None)
+               pseudolines = 'pseudo_dir = "' + pseudo_dir + '"  \n'
+               pseudolines += 'pseudopotential = "  \n' 
+               for sp in species:
+                   pseudo_dict[sp] = st.text_input(sp+":", value=sp+".UPF", on_change=None)
+                   pseudolines += sp + '   ' + pseudo_dict[sp] +'  \n'
 
-             pseudolines += '"  \n' 
-      return pseudolines    
+               pseudolines += '"  \n' 
+        cstart, col1, col2 = st.columns([0.1,1,1])
+        localize_projectors = col1.checkbox("non-local projector localization", value = True, 
+                help = "false: non-local projectors will spread in whole space, similar to plane wave codes")
+        localize_localpp = col2.checkbox("local potential localization", value = True, 
+                help = "fasle: pseudopotential's local part spreads in the whole space")
+        max_nlradius = col1.number_input("max radius of non-local projector", 100.0)
+        min_nlradius = col2.number_input("max radius of non-local projector", 2.0)
+        max_qradius = col1.number_input("max radius of q functions in Ultrasoft PP", 100.0)
+        min_qradius = col2.number_input("min radius of q functions in Ultrasoft PP", 2.0)
+        write_pseudopotential_plots = col1.checkbox("flag to write pseudopotential plots", False)
+
+        pseudolines += 'localize_localpp ="%s"  \n'%str(localize_localpp)
+        pseudolines += 'localize_projectors ="%s"  \n'%str(localize_projectors)
+        pseudolines += 'max_nlradius ="%f"  \n'%max_nlradius
+        pseudolines += 'min_nlradius ="%f"  \n'%min_nlradius
+        pseudolines += 'max_qradius ="%f"  \n'%max_qradius
+        pseudolines += 'min_qradius ="%f"  \n'%min_qradius
+        pseudolines += 'write_pseudopotential_plots ="%s"  \n'%str(write_pseudopotential_plots)
+
+    return pseudolines    
 def add_kpoint_mesh(cell):
     cs, col1, col2, col3 = st.columns([0.2,1,1,1])
     with col1:
@@ -123,7 +142,8 @@ def add_control():
 
         occupations_type = st.radio("occupation type",
                 ["Fermi Dirac", "Fixed", "Cold Smearing", "MethfesselPaxton"])
-        occ_smear = st.text_input("occupation smear in eV", value ="0.1")
+        occ_smear = st.number_input("occupation smear in eV", value =0.1)
+        MP_order = st.number_input("Order of Methefessel Paxton Occupation", value=2)
 
         poisson_solver = st.radio("Poisson Solver",
                 ["pfft", "multigrid"])
@@ -134,6 +154,7 @@ def add_control():
                 ["2nd Velocity Verlet",
                  "3rd Beeman-Velocity Verlet",
                  "5th Beeman-Velocity Verlet"])
+        md_number_of_nose_thermostats = st.number_input("Number of Nosethermostats", 5)
         ctrl_lines = ""
         ctrl_lines += 'start_mode          ="' +start_mode +'"  \n'
         ctrl_lines += 'calculation_mode    ="' +calculation_mode +'"  \n'
@@ -142,10 +163,12 @@ def add_control():
         ctrl_lines += 'relax_mass          ="' +relax_mass +'"  \n'
         ctrl_lines += 'dos_method          ="' +dos_method +'"  \n'
         ctrl_lines += 'occupations_type    ="' +occupations_type +'"  \n'
-        ctrl_lines += 'occupation_electron_temperature_eV="' +occ_smear +'"  \n'
+        ctrl_lines += 'occupation_electron_temperature_eV="%f"  \n'%occ_smear
+        ctrl_lines += 'MP_order="%d"  \n'%MP_order
         ctrl_lines += 'poisson_solver      ="' +poisson_solver +'"  \n'
-        ctrl_lines += 'md_tem_ctrl         ="' +md_tem_ctrl +'"  \n'
+        ctrl_lines += 'md_temperature_control    ="' +md_tem_ctrl +'"  \n'
         ctrl_lines += 'md_integration_order="' +md_integration_order +'"  \n'
+        ctrl_lines += 'md_number_of_nose_thermostats ="%d"  \n'%md_number_of_nose_thermostats
         return ctrl_lines
 
 def add_grid(cell):
@@ -238,7 +261,12 @@ def add_mixing():
             mixing_lines += 'charge_pulay_scale = "' +mix_scale + '"  \n'
             mixing_lines += 'charge_pulay_refresh = "' +refresh_step + '"  \n'
             pulay_gspace = col1.checkbox("Pulay mixing in G space", False)
+            drho_precond = col2.checkbox("scale q^2/(q^2+q0^2)", False)
+            drho_precond_q0= col1.number_input("q0 value", 0.5)
             mixing_lines += 'charge_pulay_Gspace = "' + str(pulay_gspace)+ '"  \n'
+            mixing_lines += 'drho_precond = "' +str(drho_precond) + '"  \n'
+            mixing_lines += 'drho_precond_q0="%f"  \n'%drho_precond_q0
+
     return mixing_lines
 
 def add_xc():
@@ -261,6 +289,7 @@ def add_xc():
                 ["None", "DFT-D2", "Grimme-D2","DFT-D3"])
         vdwdf_grid = col2.radio("grid for vdw corr",
                 ["Coarse", "Fine"])
+        vdwdf_kernel_filepath = col1.text_input("van der Waals Kernel file", "vdW_kernel_table")
         xc_lines  = 'exchange_correlaton_type="'+xc_type +'"  \n'
         xc_lines += 'exx_mode = "' + exx_mode + '"  \n'
         xc_lines += 'exxdiv_treatment = "' + exxdiv_treatment +'"  \n'
@@ -268,6 +297,7 @@ def add_xc():
         xc_lines += 'exx_fracton = "' + exx_fracton +'"  \n'
         xc_lines += 'vdw_corr            ="' +vdw_corr +'"  \n'
         xc_lines += 'vdwdf_grid_type     ="' +vdwdf_grid +'"  \n'
+        xc_lines += 'vdwdf_kernel_filepath ="%s"  \n'%vdwdf_kernel_filepath 
     return xc_lines
 
 def add_qmcpack():
@@ -348,3 +378,57 @@ def add_lattice(bounding_box):
             b = a
             c = col3.number_input("length c", value=c)
     return (ibrav, a,b,c, lattvec)            
+def add_IOctrl():
+    expand_ = st.expander("IO: files and paths")
+    with expand_:
+        cs, col1, col2 = st.columns([0.2,1,1])
+        verbose = col1.checkbox("print out more in log file if True", False)
+        cs, col1, col2 = st.columns([0.2,1,1])
+        input_wave_function_file = col1.text_input("input wave function file", "Waves/wave.out")
+        output_wave_function_file = col2.text_input("output wave function file", "Waves/wave.out")
+        write_serial_restart = col1.checkbox("write a serial file for restart", False)
+        read_serial_restart = col2.checkbox("restart from a serial file", False)
+        compressed_infile = col1.checkbox("read the compressed file for restart", True)
+        compressed_outfile = col2.checkbox("compress the out wave file", True)
+        input_tddft_file = col1.text_input("input tddft file", "Waves/wave_tddft.out")
+        output_tddft_file = col2.text_input("output TDDFT file", "Waves/wave_tddft.out")
+        nvme_weights = col1.checkbox("map nonlocal projectors to disk", False)
+        nvme_work = col2.checkbox("map work arrays to disk", False)
+        nvme_orbitals = col1.checkbox("map orbitals to disk", False)
+        nvme_qfunctons = col2.checkbox("map qfunctions to disk", False)
+        nvme_weights_filepath = col1.text_input("nvme directory for non-local projectors", "Weights/")
+        nvme_work_filepath = col2.text_input("nvme directory for work arrays", "Work/")
+        nvme_orbitals_filepath = col1.text_input(" nvme directory for orbitals", "Orbitals/")
+        qfunction_filepath = col2.text_input("nvme directory for Qfunction", "Qfunctions/")
+        cube_rho = col1.checkbox("output rho in cube format", True)
+        output_rho_xsf = col2.checkbox("output rho in xsf format", False)
+        cube_vh = col1.checkbox("output vh in cube format",  False)
+        cube_pot = col2.checkbox("output pot in cube format", False)
+        write_data_period = col1.number_input("steps to write the restart file", 5)
+        write_eigvals_period = col2.number_input("steps to write eigenvalues",5)    
+
+    IO_lines = ""
+    IO_lines += 'verbose = "%s"  \n'%str(verbose)
+    IO_lines += 'input_wave_function_file = "%s"  \n'%input_wave_function_file  
+    IO_lines += 'output_wave_function_file = "%s"  \n'%output_wave_function_file 
+    IO_lines += 'write_serial_restart = "%s"  \n'%str(write_serial_restart) 
+    IO_lines += 'read_serial_restart = "%s"  \n'%str(read_serial_restart) 
+    IO_lines += 'compressed_infile = "%s"  \n'%str(compressed_infile) 
+    IO_lines += 'compressed_outfile = "%s"  \n'%str(compressed_outfile) 
+    IO_lines += 'input_tddft_file = "%s"  \n'%input_tddft_file
+    IO_lines += 'output_tddft_file = "%s"  \n'%output_tddft_file
+    IO_lines += 'nvme_weights = "%s"  \n'%str(nvme_weights) 
+    IO_lines += 'nvme_work = "%s"  \n'%str(nvme_work) 
+    IO_lines += 'nvme_orbitals = "%s"  \n'%str(nvme_orbitals) 
+    IO_lines += 'nvme_qfunctons = "%s"  \n'%str(nvme_qfunctons) 
+    IO_lines += 'nvme_weights_filepath = "%s"  \n'%nvme_weights_filepath
+    IO_lines += 'nvme_work_filepath = "%s"  \n'%nvme_work_filepath
+    IO_lines += 'nvme_orbitals_filepath = "%s"  \n'%nvme_orbitals_filepath
+    IO_lines += 'qfunction_filepath = "%s"  \n'%qfunction_filepath
+    IO_lines += 'cube_rho = "%s"  \n'%str(cube_rho) 
+    IO_lines += 'output_rho_xsf = "%s"  \n'%str(output_rho_xsf) 
+    IO_lines += 'cube_vh = "%s"  \n'%str(cube_vh) 
+    IO_lines += 'cube_pot = "%s"  \n'%str(cube_pot) 
+    IO_lines += 'write_data_period = "%d"  \n'%write_data_period 
+    IO_lines += 'write_eigvals_period = "%d"  \n'%write_eigvals_period
+    return IO_lines
