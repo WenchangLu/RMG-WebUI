@@ -74,18 +74,18 @@ def add_kpoint_mesh(cell):
     return kpointlines
 
           
-
 def add_kpoint_text():
     cs, col1 = st.columns([0.2,1])
-    kp_list_str=col1.text_area("K point list in unit of reciprocal lattice vectors and its weight")
+    kp_list_str=col1.text_area("K point list in unit of reciprocal lattice vectors and its weight", "0.0  0.0  0.0  1.0")
     kp_list = kp_list_str.split("\n")
     kpoints = ""
+    kpointlines = 'kpoint_mesh = "-1 1 1"  \n'
     num_kpt = 0
     for kp in kp_list:
         if(len(kp.split()) ==4):
             num_kpt+=1
             kpoints += kp + '  \n'
-    kpointlines = 'kpoints = "  \n'
+    kpointlines += 'kpoints = "  \n'
     kpointlines += kpoints
     kpointlines += '"  \n'
     col1.markdown(kpointlines)
@@ -93,18 +93,38 @@ def add_kpoint_text():
         st.markdown("kpoint list need to be kx, ky, kz, weight, 4 numbers in a row")
     return kpointlines
 
+def add_kbandstr_lines():
+    cs, col1 = st.columns([0.2,1])
+    kp_list_str=col1.text_area("special lines for band structure calculation",
+       '''   0.0   0.0   0.0   0  G
+   0.5   0.0   0.0   20 X''', help ="kx, ky, kz, num, symbol, in unit of reciprocal lattice vector, num: number of kpoinks to previous special kpoint. symbol for plot")
+    kpointlines = 'kpoints_bandstructure = "  \n'
+    kp_list = kp_list_str.split("\n")
+    for kp in kp_list:
+        if(len(kp.split()) == 5):
+            kpointlines += kp + "  \n"
+        else:
+            st.markdown("format is wrong for kpoint lines for band structure")
+
+    kpointlines += '"  \n'
+    col1.markdown(kpointlines)
+    return kpointlines
+
 
 def add_kpoints(cell):
     expand_ = st.expander("K POINTS")
     with expand_:
         kp_method = st.radio("use gamma point, a mesh or a list", ["gamma", "use mesh", "use list"])
+        kp_bandstr = st.radio("kpoints for band structure", ["None", "use special lines", "use list"])
         if kp_method == "gamma":
             kpointlines = 'kpoint_mesh = "1 1 1"  \n'
             kpointlines += 'kpoint_shift = "0 0 0"  \n'
         elif kp_method == "use mesh":
             kpointlines = add_kpoint_mesh(cell)
-        else:
+        if kp_method == "use list" or kp_bandstr == "use list":
             kpointlines = add_kpoint_text()
+        if kp_bandstr == "use special lines":    
+            kpointlines += add_kbandstr_lines()
     return kpointlines
 def add_control():
     expand_ = st.expander("CONTROL OPTIONS")
