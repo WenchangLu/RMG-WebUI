@@ -175,12 +175,7 @@ class rmg_interface():
                 self.atoms.append([b.spcstring(), t[0],t[1],t[2]])
         #print(self.atoms)
 
-    def cell2rmg(self):
-        # set up species list
-        tmp = set([])
-        for a in self.atoms:
-                tmp.add(a[0])
-        self.species = list(tmp)
+    def cell2rmg(self, mag):
         filestring = ""
         #
         # some default input options
@@ -219,9 +214,11 @@ class rmg_interface():
         filestring += 'atomic_coordinate_type = "%s"  \n'%self.atom_unit 
         filestring += 'atoms="  \n'
         atom_format = "%s  %.12e %.12e %.12e"
+        iatom = 0
         for a in self.atoms:
             filestring += atom_format%(a[0],a[1], a[2], a[3])
-            filestring += "  1 1 1 0.0 0.0 0.0  \n"
+            filestring += "  1 1 1 %6.2f %6.2f %6.2f  \n"%(mag[iatom][0],mag[iatom][1],mag[iatom][2])
+            iatom += 1
         filestring += '"  \n'
 
         return filestring
@@ -238,4 +235,9 @@ class rmg_interface():
         elif filetype == "vasp":
             self.vasp2cell(filename)
 
-        self.rmginput = self.cell2rmg()
+        # set up species list
+        tmp = set([])
+        for a in self.atoms:
+                tmp.add(a[0])
+        self.species = list(tmp)
+        #self.rmginput = self.cell2rmg(mag)

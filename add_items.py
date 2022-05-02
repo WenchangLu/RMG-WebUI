@@ -435,3 +435,58 @@ def add_IOctrl():
     IO_lines += 'write_data_period = "%d"  \n'%write_data_period 
     IO_lines += 'write_eigvals_period = "%d"  \n'%write_eigvals_period
     return IO_lines
+def add_spin(species, atoms):
+    expand_ = st.expander("SPIN and MAGNETIZATION")
+    dict_mag_species = {}
+    dict_mag_species = {}
+    angle1_species = {}
+    angle2_species = {}
+
+    mag = []
+    for atom in atoms:
+        mag.append([0.0, 0.0, 0.0])
+    spin_lines = ""
+    with expand_:
+        nspin_str = st.radio("spin setup", ["None", "spin polarization", "spin orbit coupling"])
+
+        if(nspin_str == "spin polarization"):
+            spin_lines += 'spin_polarization = "True"  \n'
+            s_or_a = st.radio("Init Magnetization", ["by species", "by atoms"])
+            if s_or_a == "by species":
+                for sp in species:
+                    dict_mag_species[sp] = st.number_input(sp, 0.0, 
+                            help="spin up and down density: (0.5+x, 0.5-x) of total atomic charge density")
+                for i in range(len(atoms)):
+                    mag[i][0] = dict_mag_species[atoms[i][0]]
+            else:
+                for i in range(len(atoms)):
+                    tem_str = "atom " + str(i) +": up down spin difference"
+                    mag[i][0] = st.number_input(tem_str, 0.0)
+        
+        if(nspin_str == "spin orbit coupling"):
+            spin_lines += 'spinorbit = "True"  \n'
+            spin_lines += 'noncollinear = "True"  \n'
+            s_or_a = st.radio("Init Magnetization", ["by species", "by atoms"])
+            cs, col1, col2, col3 = st.columns([0.2,1,1,1])
+            if s_or_a == "by species":
+                for sp in species:
+                    dict_mag_species[sp] = col1.number_input(sp + " mag", 0.0, 
+                            help="spin up and down density: (0.5+x, 0.5-x) of total atomic charge density")
+                    angle1_species[sp] = col2.number_input(sp + " angle1", 0, help = "180 indicate the -z direction") 
+                    angle2_species[sp] = col3.number_input(sp + " angle2", 0, help = "directiopn in xy plane") 
+                for i in range(len(atoms)):
+                    mag[i][0] = dict_mag_species[atoms[i][0]]
+                    mag[i][1] = angle1_species[atoms[i][0]]
+                    mag[i][2] = angle2_species[atoms[i][0]]
+            else:
+                for i in range(len(atoms)):
+                    tem_str = "atom " + str(i) +": "
+                    mag[i][0] = col1.number_input(tem_str + " mag", 0.0)
+                    mag[i][1] = col2.number_input(tem_str + "angle1", 0)
+                    mag[i][2] = col3.number_input(tem_str + "angle2", 0)
+
+
+    return spin_lines, mag
+
+
+
