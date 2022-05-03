@@ -339,7 +339,7 @@ def add_mixing():
 
     return mixing_lines
 
-def add_xc():
+def add_xc(species):
     expand_ = st.expander("EXCHANGE CORRELATION POTENTIAL")
     with expand_:
         xc_type = st.radio("exchange correlation type", 
@@ -368,6 +368,29 @@ def add_xc():
         xc_lines += 'vdw_corr            ="' +vdw_corr +'"  \n'
         xc_lines += 'vdwdf_grid_type     ="' +vdwdf_grid +'"  \n'
         xc_lines += 'vdwdf_kernel_filepath ="%s"  \n'%vdwdf_kernel_filepath 
+
+
+        ldaU_mode = st.radio("LDA+U type",["None","Simple"])
+        xc_lines += 'ldaU_mode = "%s"  \n'%ldaU_mode
+        if(ldaU_mode == "Simple"):
+            cs, col1, col2 = st.columns([0.1,1,1])
+            Hubbard_U = col1.text_area("HUbbard U for species", "", 
+                help= "Ni 6.5 3d 0.0 0.0 0.0 for each specie ")
+            xc_lines += 'Hubbard_U ="  \n' + Hubbard_U + '  \n"  \n'
+            ldau_mixing_type = col1.radio("mixing type for ldau occupations", ["Linear", "Pulay"])
+            xc_lines += 'ldau_mixing_type = "%s"  \n'%ldau_mixing_type
+            cs, col1, col2 = st.columns([0.1,1,1])
+
+            ldau_mixing = col1.number_input("mixing fractions", 1.0)
+            xc_lines += 'ldau_mixing = "%f"  \n'%ldau_mixing
+            if ldau_mixing_type == "Pulay":
+                ldau_pulay_order = col2.number_input("Pulay order for lda+u mixing", 5)
+                ldau_pulay_scale = col1.number_input("Pulay scale for lda+u mixing", 0.8)
+                ldau_pulay_refresh = col2.number_input("Pulay refresh steps for lda+u mixing", 100)
+                xc_lines += 'ldau_pulay_order = "%d"  \n'%ldau_pulay_order
+                xc_lines += 'ldau_pulay_scale = "%f"  \n'% ldau_pulay_scale
+                xc_lines += 'ldau_pulay_refresh = "%d"  \n'%ldau_pulay_refresh
+
     return xc_lines
 
 def add_qmcpack():

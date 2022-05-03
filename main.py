@@ -54,7 +54,7 @@ else:
   ctrl_lines = add_control()
   scf_lines = add_scf()
   mixing_lines = add_mixing()
-  xc_lines = add_xc()
+  xc_lines = add_xc(crmg.species)
   qmcpack_lines = add_qmcpack()
   IO_lines = add_IOctrl()
   spin_lines, mag = add_spin(crmg.species, crmg.atoms)
