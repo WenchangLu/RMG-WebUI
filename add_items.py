@@ -128,6 +128,7 @@ def add_kpoints(cell):
     return kpointlines
 def add_control():
     expand_ = st.expander("CONTROL OPTIONS")
+    extra_lines =""
     with expand_:
         start_mode = st.radio("start mode", 
                 ["LCAO Start", "Restart From File", "Random Start",
@@ -150,6 +151,54 @@ def add_control():
         kohn_sham_solver=st.radio("kohn_sham_solver", 
                 ["davidson", "multigrid"],
                 help="Davidson is prefered for a small system and multigrid for a large system")
+        if kohn_sham_solver == "davidson":
+            cs, col1,col2,col3 = st.columns([0.1,1,1,1])
+            davidson_multiplier = col1.number_input("davidson_multiplier",0)
+            davidson_max_steps  = col2.number_input("davidson_max_steps", 8)
+            davidson_premg      = col3.number_input("davidson_premg", 4, help = "number of multigrid steps before davidson") 
+            extra_lines += 'davidson_multiplier = "%d"  \n'%davidson_multiplier
+            extra_lines += 'davidson_max_steps  = "%d"  \n'%davidson_max_steps
+            extra_lines += 'davidson_premg      = "%d"  \n'%davidson_premg
+        else:
+            cs, col1,col2,col3= st.columns([0.1,1,1,1])
+            kohn_sham_mg_levels = col1.number_input("kohn_sham_mg_levels", -1, 
+                help = "negative: code determines by automatically")
+            kohn_sham_pre_smoothing = col2.number_input("kohn_sham_pre_smoothing", 2)
+            kohn_sham_post_smoothing = col3.number_input("kohn_sham_post_smoothing", 2)
+            kohn_sham_mucycles = col1.number_input("kohn_sham_mucycles", 2)
+            kohn_sham_coarse_time_step = col2.number_input("kohn_sham_coarse_time_step", 1.0)
+            kohn_sham_time_step = col3.number_input("kohn_sham_time_step", 0.66)
+            kohn_sham_mg_timestep = col1.number_input("kohn_sham_mg_timestep", 0.66)
+
+            extra_lines += 'kohn_sham_mg_levels = "%d"  \n'%kohn_sham_mg_levels
+            extra_lines += 'kohn_sham_pre_smoothing = "%d"  \n'%kohn_sham_pre_smoothing
+            extra_lines += 'kohn_sham_post_smoothing = "%d"  \n'%kohn_sham_post_smoothing
+            extra_lines += 'kohn_sham_mucycles = "%d"  \n'%kohn_sham_mucycles
+            extra_lines += 'kohn_sham_coarse_time_step = "%f"  \n'%kohn_sham_coarse_time_step
+            extra_lines += 'kohn_sham_time_step = "%f"  \n'%kohn_sham_time_step
+            extra_lines += 'kohn_sham_mg_timestep = "%f"  \n'%kohn_sham_mg_timestep
+        poisson_solver = st.radio("Poisson Solver",
+                ["pfft", "multigrid"])
+        if poisson_solver == "multigrid":
+            cs, col1,col2,col3 = st.columns([0.1,1,1,1])
+            poisson_mg_levels = col1.number_input("poisson_mg_levels", -1)
+            poisson_pre_smoothing = col2.number_input(" poisson_pre_smoothing", 2)
+            poisson_post_smoothing = col3.number_input(" poisson_post_smoothing", 1)
+            poisson_mucycles = col1.number_input(" poisson_mucycles", 3)
+            poisson_finest_time_step = col2.number_input(" poisson_finest_time_step", 1.0)
+            poisson_coarse_time_step = col3.number_input(" poisson_coarse_time_step", 0.8)
+            poisson_coarsest_steps = col1.number_input(" poisson_coarsest_steps", 25)
+            hartree_max_sweeps = col2.number_input(" hartree_max_sweeps", 10)
+            hartree_min_sweeps = col3.number_input(" hartree_min_sweeps", 5)
+            extra_lines += 'poisson_mg_levels = "%d"  \n'%poisson_mg_levels
+            extra_lines += 'poisson_pre_smoothing = "%d"  \n'% poisson_pre_smoothing
+            extra_lines += 'poisson_post_smoothing = "%d"  \n'% poisson_post_smoothing
+            extra_lines += 'poisson_mucycles = "%d"  \n'% poisson_mucycles
+            extra_lines += 'poisson_finest_time_step = "%f"  \n'% poisson_finest_time_step
+            extra_lines += 'poisson_coarse_time_step = "%f"  \n'% poisson_coarse_time_step
+            extra_lines += 'poisson_coarsest_steps = "%d"  \n'% poisson_coarsest_steps
+            extra_lines += 'hartree_max_sweeps = "%d"  \n'% hartree_max_sweeps
+            extra_lines += 'hartree_min_sweeps = "%d"  \n'% hartree_min_sweeps
 
         subdiag_driver = st.radio("diagonalizatoin libs",
                 ["auto", "lapack", "scalapack", "magma", 
@@ -162,11 +211,11 @@ def add_control():
 
         occupations_type = st.radio("occupation type",
                 ["Fermi Dirac", "Fixed", "Cold Smearing", "MethfesselPaxton"])
-        occ_smear = st.number_input("occupation smear in eV", value =0.1)
-        MP_order = st.number_input("Order of Methefessel Paxton Occupation", value=2)
+        if occupations_type != "Fixed":
+            cs, col1,col2 = st.columns([0.1,1,1])
+            occ_smear = col1.number_input("occupation smear in eV", value =0.1)
+            MP_order = col2.number_input("Order of Methefessel Paxton Occupation", value=2)
 
-        poisson_solver = st.radio("Poisson Solver",
-                ["pfft", "multigrid"])
 
         md_tem_ctrl = st.radio("MD temperature control", 
                 ["Nose Hoover Chains","Anderson Rescaling"])
@@ -189,6 +238,7 @@ def add_control():
         ctrl_lines += 'md_temperature_control    ="' +md_tem_ctrl +'"  \n'
         ctrl_lines += 'md_integration_order="' +md_integration_order +'"  \n'
         ctrl_lines += 'md_number_of_nose_thermostats ="%d"  \n'%md_number_of_nose_thermostats
+        ctrl_lines += extra_lines
         return ctrl_lines
 
 def add_grid(cell):
