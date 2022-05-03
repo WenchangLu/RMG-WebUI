@@ -58,6 +58,7 @@ else:
   qmcpack_lines = add_qmcpack()
   IO_lines = add_IOctrl()
   spin_lines, mag = add_spin(crmg.species, crmg.atoms)
+  misc_lines = add_misc()
 
       
   rmginput_str += grid_lines
@@ -70,6 +71,7 @@ else:
   rmginput_str += pseudo_lines
   rmginput_str += IO_lines
   rmginput_str += spin_lines
+  rmginput_str += misc_lines
 
   rmginput_str += crmg.cell2rmg(mag)
   rmgfilename = os.path.basename(filename).split(".")[0] +".rmg"

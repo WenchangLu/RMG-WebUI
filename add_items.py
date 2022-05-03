@@ -133,7 +133,6 @@ def add_control():
         start_mode = st.radio("start mode", 
                 ["LCAO Start", "Restart From File", "Random Start",
                   "FIREBALL Start", "Gaussian Start",
-                   "Start TDDFT", "Restart TDDFT",
                     "Modified LCAO Start"])
         calculation_mode= st.radio("calculation mode", 
                 ["Quench Electrons  ", 
@@ -147,6 +146,30 @@ def add_control():
                     "NEB Relax  ",
                     "Dimer Relax  ",
                     "TDDFT "])
+        if calculation_mode == "TDDFT ":
+            cs, col1,col2 = st.columns([0.1,1,1,1])
+
+            restart_tddft = col1.checkbox("restart TDDFT?", False)
+            tddft_mode = col2.radio("TDDFT mode", ["electric field", "point charge"])
+            tddft_steps = col1.number_input("number tddft steps", 2000)
+            tddft_time_step = col2.number_input("tddft time step in atomic unit", 0.2) 
+
+            extra_lines += 'restart_tddft = "%s"  \n'%str(restart_tddft) 
+            extra_lines += 'tddft_mode = "%s"  \n'%tddft_mode
+            extra_lines += 'tddft_steps = "%d"  \n'%tddft_steps
+            extra_lines += 'tddft_time_step = "%f"  \n'%tddft_time_step
+
+            if tddft_mode == "electric field":
+                electric_field_magnitude = col1.number_input("E field value", 0.001)
+                electric_field_vector = col2.text_input("E field direction", "1  0  0")
+                extra_lines += 'electric_field_magnitude = "%f"  \n'%electric_field_magnitude
+                extra_lines += 'electric_field_vector = "%s"  \n'%electric_field_vector 
+            else:
+                tddft_qpos = col1.text_input("point charge position", "0.0  0.0  0.0")
+                tddft_qgau = col2.number_input("Gaussian for point charge", 0.1)
+                extra_lines += 'tddft_qpos = "%s"  \n'%tddft_qpos
+                extra_lines += 'tddft_qgau = "%f"  \n'%tddft_qgau
+
 
         kohn_sham_solver=st.radio("kohn_sham_solver", 
                 ["davidson", "multigrid"],
@@ -203,11 +226,18 @@ def add_control():
         subdiag_driver = st.radio("diagonalizatoin libs",
                 ["auto", "lapack", "scalapack", "magma", 
                  "cusolver", "elpa", "rocsolver"])
+        if subdiag_driver == "scalapack":
+            blk_size = st.number_input("block dim for scalapack", 64)
+            extgra_lines += 'scalapack_block_factor = "%d"  \n'%blk_size
+
 
         relax_mass = st.radio("mass for atoms", ["Atomic", "Equal"], 
                 help="equal mas for fast relax may help in some cases")
         dos_method = st.radio("density of state calc", 
               ["tetrahedra", "Gaussian"])
+        if dos_method == "Gaussian":
+            dos_broading = st.number_input("Gaissian broading in eV", 0.1)
+            extgra_lines += 'dos_broading = "%f"  \n'%dos_broading
 
         occupations_type = st.radio("occupation type",
                 ["Fermi Dirac", "Fixed", "Cold Smearing", "MethfesselPaxton"])
@@ -379,7 +409,9 @@ def add_xc(species):
             xc_lines += 'Hubbard_U ="  \n' + Hubbard_U + '  \n"  \n'
             ldau_mixing_type = col1.radio("mixing type for ldau occupations", ["Linear", "Pulay"])
             xc_lines += 'ldau_mixing_type = "%s"  \n'%ldau_mixing_type
-            cs, col1, col2 = st.columns([0.1,1,1])
+
+            ldaU_radius = col2.number_input("orbital radius for LDA+U projection", 9.0)
+            xc_lines += 'ldaU_radius = "%f"  \n'%ldaU_radius
 
             ldau_mixing = col1.number_input("mixing fractions", 1.0)
             xc_lines += 'ldau_mixing = "%f"  \n'%ldau_mixing
@@ -502,6 +534,8 @@ def add_IOctrl():
         cube_pot = col2.checkbox("output pot in cube format", False)
         write_data_period = col1.number_input("steps to write the restart file", 5)
         write_eigvals_period = col2.number_input("steps to write eigenvalues",5)    
+        cube_states_list = col1.text_input("list of states to plot in cube format", "", 
+                help="0,1-3,6,9 will print states 0, 1 to 3, 6 and 9")
 
     IO_lines = ""
     IO_lines += 'verbose = "%s"  \n'%str(verbose)
@@ -525,6 +559,7 @@ def add_IOctrl():
     IO_lines += 'output_rho_xsf = "%s"  \n'%str(output_rho_xsf) 
     IO_lines += 'cube_vh = "%s"  \n'%str(cube_vh) 
     IO_lines += 'cube_pot = "%s"  \n'%str(cube_pot) 
+    IO_lines += 'cube_states_list = "%s"  \n'%cube_states_list
     IO_lines += 'write_data_period = "%d"  \n'%write_data_period 
     IO_lines += 'write_eigvals_period = "%d"  \n'%write_eigvals_period
     return IO_lines
@@ -582,4 +617,204 @@ def add_spin(species, atoms):
     return spin_lines, mag
 
 
+def add_misc():
+    expand_ = st.expander("MISC OPTIONS")
+    misc_lines = ""
+    with expand_:
+        col0, col1, col2 = st.columns([1,1,1])
 
+        dftd3_version= col0.number_input("dftd3_version", 3)
+        misc_lines += 'dftd3_version = "%d"  \n'%dftd3_version
+        charge_analysis_period= col1.number_input("charge_analysis_period", 0)
+        misc_lines += 'charge_analysis_period = "%d"  \n'%charge_analysis_period
+        omp_threads_per_node= col2.number_input("omp_threads_per_node", 0)
+        misc_lines += 'omp_threads_per_node = "%d"  \n'%omp_threads_per_node
+        fd_allocation_limit= col0.number_input("fd_allocation_limit", 65536)
+        misc_lines += 'fd_allocation_limit = "%d"  \n'%fd_allocation_limit
+        rmg_threads_per_node= col1.number_input("rmg_threads_per_node", 0)
+        misc_lines += 'rmg_threads_per_node = "%d"  \n'%rmg_threads_per_node
+        unoccupied_states_per_kpoint= col2.number_input("unoccupied_states_per_kpoint", 10)
+        misc_lines += 'unoccupied_states_per_kpoint = "%d"  \n'%unoccupied_states_per_kpoint
+        state_block_size= col0.number_input("state_block_size", 64)
+        misc_lines += 'state_block_size = "%d"  \n'%state_block_size
+        extra_random_lcao_states= col1.number_input("extra_random_lcao_states", 0)
+        misc_lines += 'extra_random_lcao_states = "%d"  \n'%extra_random_lcao_states
+        kohn_sham_fd_order= col2.number_input("kohn_sham_fd_order", 8)
+        misc_lines += 'kohn_sham_fd_order = "%d"  \n'%kohn_sham_fd_order
+        force_grad_order= col0.number_input("force_grad_order", 8)
+        misc_lines += 'force_grad_order = "%d"  \n'%force_grad_order
+        non_local_block_size= col1.number_input("non_local_block_size", 512)
+        misc_lines += 'non_local_block_size = "%d"  \n'%non_local_block_size
+        dynamic_time_delay= col2.number_input("dynamic_time_delay", 5)
+        misc_lines += 'dynamic_time_delay = "%d"  \n'%dynamic_time_delay
+        dynamic_time_counter= col0.number_input("dynamic_time_counter", 0)
+        misc_lines += 'dynamic_time_counter = "%d"  \n'%dynamic_time_counter
+        scf_steps_offset= col1.number_input("scf_steps_offset", 0)
+        misc_lines += 'scf_steps_offset = "%d"  \n'%scf_steps_offset
+        total_scf_steps_offset= col2.number_input("total_scf_steps_offset", 0)
+        misc_lines += 'total_scf_steps_offset = "%d"  \n'%total_scf_steps_offset
+        md_steps_offset= col0.number_input("md_steps_offset", 0)
+        misc_lines += 'md_steps_offset = "%d"  \n'%md_steps_offset
+        coalesce_factor= col1.number_input("coalesce_factor", 4)
+        misc_lines += 'coalesce_factor = "%d"  \n'%coalesce_factor
+        folded_spectrum_iterations= col2.number_input("folded_spectrum_iterations", 2)
+        misc_lines += 'folded_spectrum_iterations = "%d"  \n'%folded_spectrum_iterations
+        vxc_diag_nmin= col0.number_input("vxc_diag_nmin", 1)
+        misc_lines += 'vxc_diag_nmin = "%d"  \n'%vxc_diag_nmin
+        vxc_diag_nmax= col1.number_input("vxc_diag_nmax", 1)
+        misc_lines += 'vxc_diag_nmax = "%d"  \n'%vxc_diag_nmax
+        num_wanniers= col2.number_input("num_wanniers", 0)
+        misc_lines += 'num_wanniers = "%d"  \n'%num_wanniers
+        wannier90_scdm= col0.number_input("wannier90_scdm", 0)
+        misc_lines += 'wannier90_scdm = "%d"  \n'%wannier90_scdm
+        md_temperature= col1.number_input("md_temperature", 300.0)
+        misc_lines += 'md_temperature = "%f"  \n'%md_temperature
+        md_nose_oscillation_frequency_THz= col2.number_input("md_nose_oscillation_frequency_THz", 15.59)
+        misc_lines += 'md_nose_oscillation_frequency_THz = "%f"  \n'%md_nose_oscillation_frequency_THz
+        filter_factor= col0.number_input("filter_factor", 0.25)
+        misc_lines += 'filter_factor = "%f"  \n'%filter_factor
+        potential_acceleration_constant_step= col1.number_input("potential_acceleration_constant_step", 0.0)
+        misc_lines += 'potential_acceleration_constant_step = "%f"  \n'%potential_acceleration_constant_step
+        ionic_time_step= col2.number_input("ionic_time_step", 50.0)
+        misc_lines += 'ionic_time_step = "%f"  \n'%ionic_time_step
+        ionic_time_step_increase= col0.number_input("ionic_time_step_increase", 1.1)
+        misc_lines += 'ionic_time_step_increase = "%f"  \n'%ionic_time_step_increase
+        ionic_time_step_decrease= col1.number_input("ionic_time_step_decrease", 0.5)
+        misc_lines += 'ionic_time_step_decrease = "%f"  \n'%ionic_time_step_decrease
+        max_ionic_time_step= col2.number_input("max_ionic_time_step", 150.0)
+        misc_lines += 'max_ionic_time_step = "%f"  \n'%max_ionic_time_step
+        system_charge= col0.number_input("system_charge", 0.0)
+        misc_lines += 'system_charge = "%f"  \n'%system_charge
+        unoccupied_tol_factor= col1.number_input("unoccupied_tol_factor", 1000.0)
+        misc_lines += 'unoccupied_tol_factor = "%f"  \n'%unoccupied_tol_factor
+        projector_expansion_factor= col2.number_input("projector_expansion_factor", 1.0)
+        misc_lines += 'projector_expansion_factor = "%f"  \n'%projector_expansion_factor
+        folded_spectrum_width= col0.number_input("folded_spectrum_width", 0.3)
+        misc_lines += 'folded_spectrum_width = "%f"  \n'%folded_spectrum_width
+        ecutrho= col1.number_input("ecutrho", 0.0)
+        misc_lines += 'ecutrho = "%f"  \n'%ecutrho
+        ecutwfc= col2.number_input("ecutwfc", 0.0)
+        misc_lines += 'ecutwfc = "%f"  \n'%ecutwfc
+        test_energy= col0.number_input("test_energy", 0.0)
+        misc_lines += 'test_energy = "%f"  \n'%test_energy
+        test_energy_tolerance= col1.number_input("test_energy_tolerance", 1.0e-7)
+        misc_lines += 'test_energy_tolerance = "%f"  \n'%test_energy_tolerance
+        test_bond_length= col2.number_input("test_bond_length", 0.0)
+        misc_lines += 'test_bond_length = "%f"  \n'%test_bond_length
+        test_bond_length_tolerance= col0.number_input("test_bond_length_tolerance", 1.0e-3)
+        misc_lines += 'test_bond_length_tolerance = "%f"  \n'%test_bond_length_tolerance
+        relax_max_force= col1.number_input("relax_max_force", 2.5E-3)
+        misc_lines += 'relax_max_force = "%f"  \n'%relax_max_force
+        stress_convergence_criterion= col2.number_input("stress_convergence_criterion", 0.5)
+        misc_lines += 'stress_convergence_criterion = "%f"  \n'%stress_convergence_criterion
+        gw_residual_convergence_criterion= col0.number_input("gw_residual_convergence_criterion", 1.0e-6)
+        misc_lines += 'gw_residual_convergence_criterion = "%f"  \n'%gw_residual_convergence_criterion
+        gw_residual_fraction= col1.number_input("gw_residual_fraction", 0.90)
+        misc_lines += 'gw_residual_fraction = "%f"  \n'%gw_residual_fraction
+        hartree_rms_ratio= col2.number_input("hartree_rms_ratio", 100000.0)
+        misc_lines += 'hartree_rms_ratio = "%f"  \n'%hartree_rms_ratio
+        electric_field_magnitude= col0.number_input("electric_field_magnitude", 0.0)
+        misc_lines += 'electric_field_magnitude = "%f"  \n'%electric_field_magnitude
+        wannier90_scdm_mu= col1.number_input("wannier90_scdm_mu", 0.0)
+        misc_lines += 'wannier90_scdm_mu = "%f"  \n'%wannier90_scdm_mu
+        wannier90_scdm_sigma= col2.number_input("wannier90_scdm_sigma", 1.0)
+        misc_lines += 'wannier90_scdm_sigma = "%f"  \n'%wannier90_scdm_sigma
+        stress= col0.checkbox("stress",False)
+        misc_lines += 'stress = "%f"  \n'%stress
+        cell_relax= col1.checkbox("cell_relax",False)
+        misc_lines += 'cell_relax = "%f"  \n'%cell_relax
+        dipole_moment= col2.checkbox("dipole_moment",False)
+        misc_lines += 'dipole_moment = "%f"  \n'%dipole_moment
+        use_gpu_fd= col0.checkbox("use_gpu_fd",False)
+        misc_lines += 'use_gpu_fd = "%f"  \n'%use_gpu_fd
+        laplacian_offdiag= col1.checkbox("laplacian_offdiag",False)
+        misc_lines += 'laplacian_offdiag = "%f"  \n'%laplacian_offdiag
+        laplacian_autocoeff= col2.checkbox("laplacian_autocoeff",False)
+        misc_lines += 'laplacian_autocoeff = "%f"  \n'%laplacian_autocoeff
+        use_cpdgemr2d= col0.checkbox("use_cpdgemr2d",True)
+        misc_lines += 'use_cpdgemr2d = "%f"  \n'%use_cpdgemr2d
+        use_symmetry= col1.checkbox("use_symmetry",True)
+        misc_lines += 'use_symmetry = "%f"  \n'%use_symmetry
+        frac_symmetry= col2.checkbox("frac_symmetry",True)
+        misc_lines += 'frac_symmetry = "%f"  \n'%frac_symmetry
+        rmg2bgw= col0.checkbox("rmg2bgw",False)
+        misc_lines += 'rmg2bgw = "%f"  \n'%rmg2bgw
+        pin_nonlocal_weights= col1.checkbox("pin_nonlocal_weights",False)
+        misc_lines += 'pin_nonlocal_weights = "%f"  \n'%pin_nonlocal_weights
+        use_cublasxt= col2.checkbox("use_cublasxt",False)
+        misc_lines += 'use_cublasxt = "%f"  \n'%use_cublasxt
+        use_bessel_projectors= col0.checkbox("use_bessel_projectors",False)
+        misc_lines += 'use_bessel_projectors = "%f"  \n'%use_bessel_projectors
+        write_orbital_overlaps= col1.checkbox("write_orbital_overlaps",False)
+        misc_lines += 'write_orbital_overlaps = "%f"  \n'%write_orbital_overlaps
+        kohn_sham_ke_fft= col2.checkbox("kohn_sham_ke_fft",False)
+        misc_lines += 'kohn_sham_ke_fft = "%f"  \n'%kohn_sham_ke_fft
+        fast_density= col0.checkbox("fast_density",True)
+        misc_lines += 'fast_density = "%f"  \n'%fast_density
+        lcao_use_empty_orbitals= col1.checkbox("lcao_use_empty_orbitals",False)
+        misc_lines += 'lcao_use_empty_orbitals = "%f"  \n'%lcao_use_empty_orbitals
+        write_qmcpack_restart_localized= col2.checkbox("write_qmcpack_restart_localized",False)
+        misc_lines += 'write_qmcpack_restart_localized = "%f"  \n'%write_qmcpack_restart_localized
+        alt_laplacian= col0.checkbox("alt_laplacian",True)
+        misc_lines += 'alt_laplacian = "%f"  \n'%alt_laplacian
+        use_alt_zgemm= col1.checkbox("use_alt_zgemm",False)
+        misc_lines += 'use_alt_zgemm = "%f"  \n'%use_alt_zgemm
+        filter_dpot= col2.checkbox("filter_dpot",False)
+        misc_lines += 'filter_dpot = "%f"  \n'%filter_dpot
+        sqrt_interpolation= col0.checkbox("sqrt_interpolation",False)
+        misc_lines += 'sqrt_interpolation = "%f"  \n'%sqrt_interpolation
+        renormalize_forces= col1.checkbox("renormalize_forces",True)
+        misc_lines += 'renormalize_forces = "%f"  \n'%renormalize_forces
+        coalesce_states= col2.checkbox("coalesce_states",False)
+        misc_lines += 'coalesce_states = "%f"  \n'%coalesce_states
+        equal_initial_density= col0.checkbox("equal_initial_density",False)
+        misc_lines += 'equal_initial_density = "%f"  \n'%equal_initial_density
+        write_pdos= col1.checkbox("write_pdos",False)
+        misc_lines += 'write_pdos = "%f"  \n'%write_pdos
+        folded_spectrum= col2.checkbox("folded_spectrum",False)
+        misc_lines += 'folded_spectrum = "%f"  \n'%folded_spectrum
+        use_numa= col0.checkbox("use_numa",True)
+        misc_lines += 'use_numa = "%f"  \n'%use_numa
+        use_hwloc= col1.checkbox("use_hwloc",False)
+        misc_lines += 'use_hwloc = "%f"  \n'%use_hwloc
+        use_async_allreduce= col2.checkbox("use_async_allreduce",True)
+        misc_lines += 'use_async_allreduce = "%f"  \n'%use_async_allreduce
+        mpi_queue_mode= col0.checkbox("mpi_queue_mode",True)
+        misc_lines += 'mpi_queue_mode = "%f"  \n'%mpi_queue_mode
+        spin_manager_thread= col1.checkbox("spin_manager_thread",True)
+        misc_lines += 'spin_manager_thread = "%f"  \n'%spin_manager_thread
+        spin_worker_threads= col2.checkbox("spin_worker_threads",True)
+        misc_lines += 'spin_worker_threads = "%f"  \n'%spin_worker_threads
+        require_huge_pages= col0.checkbox("require_huge_pages",False)
+        misc_lines += 'require_huge_pages = "%f"  \n'%require_huge_pages
+        relax_dynamic_timestep= col1.checkbox("relax_dynamic_timestep",False)
+        misc_lines += 'relax_dynamic_timestep = "%f"  \n'%relax_dynamic_timestep
+        freeze_occupied= col2.checkbox("freeze_occupied",False)
+        misc_lines += 'freeze_occupied = "%f"  \n'%freeze_occupied
+        md_randomize_velocity= col0.checkbox("md_randomize_velocity",True)
+        misc_lines += 'md_randomize_velocity = "%f"  \n'%md_randomize_velocity
+        time_reversal= col1.checkbox("time_reversal",True)
+        misc_lines += 'time_reversal = "%f"  \n'%time_reversal
+        wannier90= col2.checkbox("wannier90",False)
+        misc_lines += 'wannier90 = "%f"  \n'%wannier90
+        processor_grid= st.text_input("processor_grid", "1 1 1")
+        misc_lines += 'processor_grid = "%s"  \n'%processor_grid
+        dipole_correction= st.text_input("dipole_correction", "0  0  0")
+        misc_lines += 'dipole_correction = "%s"  \n'%dipole_correction
+        cell_movable= st.text_input("cell_movable", "0 0 0 0 0 0 0 0 0")
+        misc_lines += 'cell_movable = "%s"  \n'%cell_movable
+        atomic_orbital_type= st.radio("atomic_orbital_type", ["delocalized","localized"])
+        misc_lines += 'atomic_orbital_type = "%s"  \n'%atomic_orbital_type
+        electric_field_vector= st.text_input("electric_field_vector", "0  0  1")
+        misc_lines += 'electric_field_vector = "%s"  \n'%electric_field_vector
+        states_count_and_occupation_spin_up= st.text_input("states_count_and_occupation_spin_up", "")
+        misc_lines += 'states_count_and_occupation_spin_up = "%s"  \n'%states_count_and_occupation_spin_up
+        states_count_and_occupation_spin_down= st.text_input("states_count_and_occupation_spin_down", "")
+        misc_lines += 'states_count_and_occupation_spin_down = "%s"  \n'%states_count_and_occupation_spin_down
+        states_count_and_occupation= st.text_input("states_count_and_occupation", "")
+        misc_lines += 'states_count_and_occupation = "%s"  \n'%states_count_and_occupation
+        energy_output_units= st.radio("energy_output_units", ["Hartrees", "Rydbergs"])
+        misc_lines += 'energy_output_units = "%s"  \n'%energy_output_units
+        interpolation_type= st.radio("interpolation_type", ["FFT", "Cubic Polynomial", "prolong"])
+        misc_lines += 'interpolation_type = "%s"  \n'%interpolation_type
+    return misc_lines     
